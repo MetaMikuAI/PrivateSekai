@@ -1,0 +1,1 @@
+mitmweb -m wireguard --no-http2 -s ./mitm.py --set termlog_verbosity=info --ignore 127.0.0.1

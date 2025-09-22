@@ -1,0 +1,14 @@
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# get key and iv from frida-il2cpp-bridge first
+key = b''
+iv = b''
+
+jwt_key = "MetaMiku"
+jwt_alg = "HS256"
+
+IGNORE_INVALID_CREDENTIAL = True

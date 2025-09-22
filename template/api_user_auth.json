@@ -1,0 +1,23 @@
+{
+    "sessionToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX0.examplesignature",
+    "appVersion": "5.6.0",
+    "multiPlayVersion": "miku",
+    "dataVersion": "5.6.0.30",
+    "assetVersion": "5.6.0.30",
+    "removeAssetVersion": "1.13.0.30",
+    "assetHash": "5242f35c-e32d-bafb-a488-74b247052713",
+    "appVersionStatus": "available",
+    "isStreamingVirtualLiveForceOpenUser": false,
+    "deviceId": "d36eedbf-b514-4760-8b71-053828d1cefd",
+    "updatedResources": {},
+    "suiteMasterSplitPath": [
+        "suitemasterfile/5.6.0.30/00_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/01_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/02_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/03_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/04_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/05_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
+        "suitemasterfile/5.6.0.30/06_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41"
+    ],
+    "obtainedBondsRewardIds": []
+}

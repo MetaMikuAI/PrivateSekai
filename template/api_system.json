@@ -1,0 +1,561 @@
+{
+    "serverDate": 1758277182407,
+    "timezone": "Asia/Tokyo",
+    "profile": "production",
+    "maintenanceStatus": "maintenance_out",
+    "appVersions": [
+        {
+            "systemProfile": "production",
+            "appVersion": "1.0",
+            "multiPlayVersion": "0.1",
+            "assetVersion": "1.0.3",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.0.1",
+            "multiPlayVersion": "0.2",
+            "assetVersion": "1.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.1.0",
+            "multiPlayVersion": "0.3",
+            "assetVersion": "1.1.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.10.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "1.10.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.10.1",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.10.1.21",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.10.3",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.11.0.1",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.11.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "1.11.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.11.1",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.11.1.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.12.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "1.12.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.13.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "1.13.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.2.0",
+            "multiPlayVersion": "0.4",
+            "assetVersion": "1.2.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.3.0",
+            "multiPlayVersion": "1.3.0",
+            "assetVersion": "1.3.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.3.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "1.3.1.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.4.0",
+            "multiPlayVersion": "rin",
+            "assetVersion": "1.4.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.4.1",
+            "multiPlayVersion": "rin",
+            "assetVersion": "1.4.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.5.0",
+            "multiPlayVersion": "len",
+            "assetVersion": "1.5.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.5.1",
+            "multiPlayVersion": "len",
+            "assetVersion": "1.5.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.6.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "1.6.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.7.0",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.7.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.7.1",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.8.0.0",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.8.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "1.8.0.15",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.8.1",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.9.0.0",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.9.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "1.9.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "1.9.1",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "1.10.0.5",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.0.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.0.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.0.1",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.0.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.0.2",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.0.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.0.5",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.0.5.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.1.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.1.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.2.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.2.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.2.1",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.2.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.2.2",
+            "multiPlayVersion": "meiko",
+            "assetVersion": "2.2.0.71",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.3.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.3.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.3.1",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.3.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.3.2",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.3.5.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.3.5",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.3.5.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.4.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.4.0.70",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.5.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.5.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.5.1",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.5.0.25",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.5.2",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.5.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.6.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.6.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.6.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.6.0.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.6.2",
+            "multiPlayVersion": "luka",
+            "assetVersion": "2.6.2.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.7.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.7.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.7.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.7.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.7.5",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.8.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "2.8.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "2.8.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.0.0",
+            "multiPlayVersion": "luka",
+            "assetVersion": "3.0.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.0.1",
+            "multiPlayVersion": "luka",
+            "assetVersion": "3.0.0.21",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.0.5",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.0.5.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.1.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.1.0.15",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.1.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.1.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.1.5",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.1.5.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.2.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.3.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.3.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.3.0.65",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.3.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.3.0.65",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.4.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.4.0.15",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.4.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.4.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.5.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.5.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.6.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.6.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.6.5",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.6.5.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.7.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.7.0.45",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.8.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.8.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "3.8.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "3.8.0.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "4.0.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "4.0.0.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "4.0.5",
+            "multiPlayVersion": "miku",
+            "assetVersion": "4.0.5.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "4.1.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "4.1.0.80",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "4.1.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "4.1.0.80",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.0.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.0.0.41",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.0.2",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.0.0.70",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.1.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.1.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.1.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.1.0.80",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.2.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.2.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.3.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.3.0.100",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.4.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.4.0.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.5.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.5.0.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.5.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.5.1.100",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.6.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.6.0.50",
+            "appVersionStatus": "available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "5.6.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "5.6.0.50",
+            "appVersionStatus": "available"
+        }
+    ]
+}
