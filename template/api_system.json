@@ -1,5 +1,5 @@
 {
-    "serverDate": 1758277182407,
+    "serverDate": 1760583406115,
     "timezone": "Asia/Tokyo",
     "profile": "production",
     "maintenanceStatus": "maintenance_out",
@@ -548,13 +548,34 @@
             "appVersion": "5.6.0",
             "multiPlayVersion": "miku",
             "assetVersion": "5.6.0.50",
-            "appVersionStatus": "available"
+            "appVersionStatus": "not_available"
         },
         {
             "systemProfile": "production",
             "appVersion": "5.6.1",
             "multiPlayVersion": "miku",
-            "assetVersion": "5.6.0.50",
+            "assetVersion": "5.6.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.0.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.0.0.10",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.0.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.0.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.0.2",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.0.0.40",
             "appVersionStatus": "available"
         }
     ]

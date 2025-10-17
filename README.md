@@ -65,8 +65,23 @@
 - [x] 用户注销
 - [x] 引继码设置
 - [x] 引继码继承
+- [x] suitemasterfile
 - [ ] 会话鉴权
+- [x] Special Story 阅读
+- [ ] Gacha
+- [ ] Presents 邮箱
+- [ ] Solo Live
+- [ ] CD Shop
 
 ---
 
 **本项目仅供个人学习和技术交流，严禁用于任何非法或违规用途。请自觉遵守相关法律法规和本协议内容。**
+
+## Debug API
+
+| API                                                  | 作用                        |
+| ---------------------------------------------------- | --------------------------- |
+| `GET /metamiku/debug/getUserList`                    | 获取全部 user 列表          |
+| `GET /metamiku/debug/getUserSuiteData/<int:user_id>` | 获取指定 user 的 suite 数据 |
+|                                                      |                             |
+

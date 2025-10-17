@@ -1,23 +1,23 @@
 {
-    "sessionToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX0.examplesignature",
-    "appVersion": "5.6.0",
+    "sessionToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzZXNzaW9uVG9rZW4iOiI4MGNjN2UzYi03OTBhLTQxODgtODU3Yi00ZTQ3MWY3ZTk1M2MiLCJ1c2VySWQiOiI2NzI2MjA3MTA5ODA4NDk2NjQifQ.0sw0pFRe0TJ5NJfLweUTbhaKAZAfjVLggKIKD3gaNME",
+    "appVersion": "6.0.2",
     "multiPlayVersion": "miku",
-    "dataVersion": "5.6.0.30",
-    "assetVersion": "5.6.0.30",
+    "dataVersion": "6.0.0.40",
+    "assetVersion": "6.0.0.40",
     "removeAssetVersion": "1.13.0.30",
-    "assetHash": "5242f35c-e32d-bafb-a488-74b247052713",
+    "assetHash": "7c61fb2e-0828-f838-cb70-e8fabb59af21",
     "appVersionStatus": "available",
     "isStreamingVirtualLiveForceOpenUser": false,
-    "deviceId": "d36eedbf-b514-4760-8b71-053828d1cefd",
+    "deviceId": "6c2d2915-55ee-48e2-8e7e-d519ae206a83",
     "updatedResources": {},
     "suiteMasterSplitPath": [
-        "suitemasterfile/5.6.0.30/00_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/01_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/02_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/03_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/04_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/05_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41",
-        "suitemasterfile/5.6.0.30/06_bb2194a8ea47722555dd056f8cc2a2d4563ea2041d4a3657b427285dca156e41"
+        "suitemasterfile/6.0.0.40/00_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/01_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/02_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/03_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/04_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/05_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",
+        "suitemasterfile/6.0.0.40/06_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5"
     ],
     "obtainedBondsRewardIds": []
 }
