@@ -6,9 +6,7 @@ __pycache__
 /sekai-master-db-diff/
 /mitmanalyze/
 
-/suitemasterfile/
-!suitemasterfile/README.md
-!suitemasterfile/*.zip
+/suitemasterfile/*/
 
 /test
 config.py

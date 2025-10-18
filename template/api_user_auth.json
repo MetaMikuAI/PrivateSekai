@@ -1,5 +1,5 @@
 {
-    "sessionToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzZXNzaW9uVG9rZW4iOiI4MGNjN2UzYi03OTBhLTQxODgtODU3Yi00ZTQ3MWY3ZTk1M2MiLCJ1c2VySWQiOiI2NzI2MjA3MTA5ODA4NDk2NjQifQ.0sw0pFRe0TJ5NJfLweUTbhaKAZAfjVLggKIKD3gaNME",
+    "sessionToken": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzZXNzaW9uVG9rZW4iOiJlZjVjMzkzMC04OTdhLTQzY2MtYTJhYy1jODY5MWI3ZThhOWEiLCJ1c2VySWQiOiI2NzMxMTA0MjEzMjc2MTM5NTIifQ._9rdAH7upJq_xKA62_SMaW_o1-AxIf6VPA7k5hSIwBc",
     "appVersion": "6.0.2",
     "multiPlayVersion": "miku",
     "dataVersion": "6.0.0.40",
@@ -8,7 +8,6 @@
     "assetHash": "7c61fb2e-0828-f838-cb70-e8fabb59af21",
     "appVersionStatus": "available",
     "isStreamingVirtualLiveForceOpenUser": false,
-    "deviceId": "6c2d2915-55ee-48e2-8e7e-d519ae206a83",
     "updatedResources": {},
     "suiteMasterSplitPath": [
         "suitemasterfile/6.0.0.40/00_e26640afd7819a315cd4b13660b3431ea0a7365d3e0640b9129ac106ae82dfe5",

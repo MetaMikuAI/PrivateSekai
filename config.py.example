@@ -19,6 +19,10 @@ SKIP_TUTORIAL = False
 
 DEBUG = True
 
+def user_customize_patch(user):
+    # example
+    user['userChargedCurrency']['paid'] = 20070831
+
 with open('template/api_user_auth.json', 'r', encoding='utf-8') as f:
     api_user_auth = json.load(f)
 

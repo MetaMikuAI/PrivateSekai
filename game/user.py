@@ -4,10 +4,11 @@ from .card import UserCardMixin
 from .tutorial import UserTutorialMixin
 from .inherit import UserInheritMixin
 from .special_story import UserSpecialStoryMixin
+from .present import UserPresentMixin
 from config import SKIP_TUTORIAL
 from typing import Any
 
-class User(UserCardMixin, UserTutorialMixin, UserInheritMixin, UserSpecialStoryMixin, Box):
+class User(UserCardMixin, UserTutorialMixin, UserInheritMixin, UserSpecialStoryMixin, UserPresentMixin, Box):
     def __init__(self, data=None, **kwargs):
         """
         data 可以是:
@@ -69,6 +70,17 @@ class User(UserCardMixin, UserTutorialMixin, UserInheritMixin, UserSpecialStoryM
             }
 
         # userHomeBanners # 这个不改
+    
+    def init_not_suite(self):
+        """增加一个私有的 notsuite 字段，该字段不随 get_suite_user_data 导出"""
+        self.notsuite = {
+            'userInherit': {
+                'inheritId': '',
+                'password': ''
+            },
+            'userPresentHistories': []
+        }
+
 
     def update_user_name(self, new_name: str):
         self.userGamedata.name = new_name
@@ -81,7 +93,18 @@ class User(UserCardMixin, UserTutorialMixin, UserInheritMixin, UserSpecialStoryM
 
     def get_suite_user_data(self) -> dict:
         self.now = int(time.time() * 1000)
-        return self.to_dict()
+        suite_data = self.to_dict()
+        if hasattr(suite_data, "notsuite"):
+            del suite_data["notsuite"]
+        return suite_data
+    
+    def get_not_suite_data(self) -> dict:
+        not_suite_data = self.notsuite if hasattr(self, "notsuite") else {}
+        return not_suite_data
+    
+    def get_all_data(self) -> dict:
+        all_data = self.to_dict()
+        return all_data
 
     def get_refresh_data(self, delete_rtypes: set[str] = set()) -> dict[str, Any]:
         base_rtypes = {
@@ -92,7 +115,7 @@ class User(UserCardMixin, UserTutorialMixin, UserInheritMixin, UserSpecialStoryM
             "userHomeBanners", 
             "userMaterialExchanges", 
             "userGachaCeilExchanges", 
-            "userBeginnerMissionBehavior",
+            # "userBeginnerMissionBehavior",
             "userRankMatchResult", 
             "userViewableAppeal",
             "userBillingRefunds",

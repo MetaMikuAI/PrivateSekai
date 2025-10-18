@@ -10,6 +10,7 @@ from api.home import home_bp
 from api.inherit import inherit_bp
 from api.login import login_bp
 from api.misc import misc_bp
+from api.present import present_bp
 from api.story import story_bp
 from api.suitemasterfile import suitemasterfile_bp
 from api.tutorial import tutorial_bp
@@ -29,6 +30,7 @@ app.register_blueprint(inherit_bp)
 app.register_blueprint(home_bp)
 app.register_blueprint(login_bp)
 app.register_blueprint(misc_bp)
+app.register_blueprint(present_bp)
 app.register_blueprint(story_bp)
 app.register_blueprint(suitemasterfile_bp)
 app.register_blueprint(tutorial_bp)

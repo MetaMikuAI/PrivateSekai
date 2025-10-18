@@ -2,7 +2,7 @@ from mitmproxy import http
 from time import time
 
 if_redirect = False
-if_redirect = True
+# if_redirect = True
 
 redirects = {
     "https://production-game-api.sekai.colorfulpalette.org": "http://127.0.0.1:5000",

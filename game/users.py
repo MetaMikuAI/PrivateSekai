@@ -2,6 +2,7 @@ from game.user import User
 import json
 import time
 from typing import Optional
+from config import user_customize_patch
 
 class Users:
     def __init__(self):
@@ -18,6 +19,7 @@ class Users:
         with open("template/user_0.json", "r", encoding="utf-8") as f:
             user_data = json.load(f)
         user = User(user_data)
+        user_customize_patch(user)
         self.users[user_id] = user
     
     def get_new_user_id(self) -> int:
@@ -34,6 +36,7 @@ class Users:
         new_user.init_all_user_id(new_user_id)
         now = int(time.time() * 1000)
         new_user.init_all_user_time(now)
+        new_user.init_not_suite()
 
         self.users[new_user_id] = new_user
         return new_user_id

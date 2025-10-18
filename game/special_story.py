@@ -1,7 +1,5 @@
-import time
 from typing import Optional, Callable
 
-# class UserTutorialMixin:
 class UserSpecialStoryMixin:
     def read_episode(self, special_episode_id: int, is_not_skipped: bool = False):
         user_special_episode_statuses = getattr(self, 'userSpecialEpisodeStatuses', None)

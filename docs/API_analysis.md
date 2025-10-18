@@ -618,6 +618,192 @@ header 中 `X-Inherit-Id-Verify-Token` 字段以 jwt 形式储存引继信息，
 response 比 `isExecuteInherit=False` 多一个 `credential`，其余不变，故略
 
 
+## 故事
+
+### `GET /api/user/<int:user_id>/story/recommend`
+
+#### 作用
+
+从 home 进入 story 页面时，获取推荐故事列表
+
+#### Response
+
+example:
+
+```json
+{
+    "userStoryRecommends": [
+        {
+            "storyType": "unit_story",
+            "storyId": 10,
+            "reason": "continuously",
+            "category": "continuously",
+            "seq": 1
+        },
+        {
+            "storyType": "unit_story",
+            "storyId": 9,
+            "reason": "main_story",
+            "category": "random",
+            "seq": 2
+        },
+        {
+            "storyType": "event_story",
+            "storyId": 27,
+            "reason": "recommend",
+            "category": "random",
+            "seq": 3
+        }
+    ]
+}
+```
+
+
+### `POST /api/user/<int:user_id>/story/archive_event_story/episode/<int:episode_id>/log`
+
+#### 作用
+
+阅读完毕后，上传阅读数据
+
+#### Request
+
+```json
+{
+    "noSkip": false,
+    "useSkip": true,
+    "autoFinish": false,
+    "useAuto": false,
+    "fastForward": false,
+    "voice": false,
+    "numPages": 0,
+    "continuousPlayStart": false,
+    "playMusicVideo": false,
+    "musicVocalId": 0,
+    "musicCategoryName": "mv",
+    "musicVideoNoSkip": false,
+    "userStoryMusicPlays": []
+}
+```
+
+```json
+{
+    "noSkip": false,
+    "useSkip": true,
+    "autoFinish": false,
+    "useAuto": false,
+    "fastForward": false,
+    "voice": true,
+    "numPages": 0,
+    "continuousPlayStart": false,
+    "playMusicVideo": false,
+    "musicVocalId": 0,
+    "musicCategoryName": "mv",
+    "musicVideoNoSkip": false,
+    "userStoryMusicPlays": []
+}
+```
+
+
+#### Response
+
+```python
+response_data: dict[str, Any] = {
+    'updatedResources': user.get_refresh_data(delete_rtypes={'userBeginnerMissionBehavior'}),
+    'userObtainResourceResults': []
+}
+```
+
+
+### `GET /api/user/<int:user_id>/present/history`
+
+#### 作用
+
+获取礼物领取历史
+
+#### Response
+
+```json
+{
+    "userPresentHistories": [
+        {
+            "presentId": "6f8aba08-d2ff-4bd0-b792-28839704c77c",
+            "seq": 9223370276153127000,
+            "resourceType": "jewel",
+            "resourceQuantity": 300,
+            "expiredAt": 1763293649286,
+            "reason": "初心者応援ログインキャンペーン1日目の報酬です。",
+            "receivedAt": 1760701649286
+        },
+        {
+            "presentId": "bccfe9aa-13f2-4f8f-a09d-d1c9a240a59e",
+            "seq": 9223370276152812000,
+            "resourceType": "gacha_ticket",
+            "resourceId": 21,
+            "resourceQuantity": 1,
+            "expiredAt": 1763293964524,
+            "reason": "初心者応援ログインキャンペーン1日目の報酬です。",
+            "receivedAt": 1760701964524
+        }
+    ]
+}
+```
+
+这个不在 suite 表内，需要新开一个
+
+### `POST /api/user/<int:user_id>/present`
+
+#### 作用
+
+领礼物
+
+#### Resquest
+
+```json
+{
+    "presentIds": [
+        "bccfe9aa-13f2-4f8f-a09d-d1c9a240a59e"
+    ]
+}
+```
+
+```json
+{
+    "presentIds": [
+        "00798615-0d71-4de7-af22-d157a141e24b",
+        "02fcdea9-e17c-4e6c-828e-516950981ac4",
+        "030910a4-6963-4b8f-8b4b-e860186443c8",
+        "077d5b8c-2aae-48f8-9bb2-1784e086ddb2",
+        "088061b8-b767-4f19-b364-16174d612e20",
+        "0d3da7a0-c316-4c34-90cd-b794afad91c2",
+        "0ef35c72-4d8a-4638-a00c-c1c326c5fcae",
+        "115ea4b3-b858-4b74-9f4b-8bf2f61dbe06",
+        "128b4524-540a-4369-879c-77030c6306e2"
+    ]
+}
+```
+
+#### Response
+
+```json
+{
+    "updatedResources": {
+        "now": 1760767936309,
+        "refreshableTypes": [],
+        // ...
+    },
+    "receivedUserPresents": [
+        {
+            "presentId": "4565daff-1131-4ed1-838d-47b82ea7a295",
+            "seq": 9223370276086839000,
+            "resourceType": "jewel",
+            "resourceQuantity": 300,
+            "expiredAt": 1763359936309,
+            "reason": "初心者応援ログインキャンペーン1日目の報酬です。",
+            "receivedAt": 1760767936309
+        }
+    ]
+}
+```
 
 ## 临时分析
 

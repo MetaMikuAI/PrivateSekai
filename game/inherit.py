@@ -12,11 +12,16 @@ class UserInheritMixin:
         
         inherit_id = ''.join(random.choices(string.ascii_letters + string.digits, k=16))
         
-        self.userInherit = {
+        userInherit = {
             'inheritId': inherit_id,
-            'password': password    # WARN: 实际不应存放于此，存于此处仅为简便实现
+            # 'password': password    # WARN: 实际不应存放于此，存于此处仅为简便实现
         }
-        
+
+        notsuite = getattr(self, 'notsuite', None)
+        assert notsuite is not None
+        notsuite['userInherit']['inheritId'] = inherit_id
+        notsuite['userInherit']['password'] = password
+
         update_refreshable_types: Optional[Callable] = getattr(self, 'update_refreshable_types', None)
         assert update_refreshable_types
         update_refreshable_types('userInherit')
@@ -38,8 +43,11 @@ class UserInheritMixin:
     def verify_inherit(self, inherit_id: str, password: str) -> bool:
         user_inherit = getattr(self, 'userInherit', None)
         assert user_inherit is not None
-        
-        if user_inherit.get('inheritId') != inherit_id or user_inherit.get('password') != password:
+
+        notsuite = getattr(self, 'notsuite', None)
+        assert notsuite is not None
+
+        if notsuite['userInherit'].get('inheritId') != inherit_id or notsuite['userInherit'].get('password') != password:
             return False
         
         return True
