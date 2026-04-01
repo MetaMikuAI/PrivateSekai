@@ -1,5 +1,5 @@
 {
-    "serverDate": 1760583406115,
+    "serverDate": 1188486000000,
     "timezone": "Asia/Tokyo",
     "profile": "production",
     "maintenanceStatus": "maintenance_out",
@@ -575,7 +575,63 @@
             "systemProfile": "production",
             "appVersion": "6.0.2",
             "multiPlayVersion": "miku",
-            "assetVersion": "6.0.0.40",
+            "assetVersion": "6.0.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.1.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.1.0.20",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.1.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.1.0.70",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.1.2",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.1.0.110",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.2.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.2.0.40",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.2.1",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.2.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.3.0",
+            "multiPlayVersion": "miku",
+            "assetVersion": "6.3.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.3.5",
+            "multiPlayVersion": "kaito",
+            "assetVersion": "6.3.5.50",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.4.0",
+            "multiPlayVersion": "kaito",
+            "assetVersion": "6.4.0.20",
             "appVersionStatus": "available"
         }
     ]

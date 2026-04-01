@@ -1,0 +1,56 @@
+using PrivateSekai.Config;
+using PrivateSekai.Services;
+
+var builder = WebApplication.CreateBuilder(args);
+
+ServerConfig.Load(builder.Configuration);
+
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.ListenAnyIP(ServerConfig.Port);
+});
+
+builder.Services.AddSingleton<UserManager>();
+builder.Services.AddControllers();
+
+var app = builder.Build();
+
+app.Use(async (ctx, next) =>
+{
+    var sw = System.Diagnostics.Stopwatch.StartNew();
+    await next();
+    sw.Stop();
+    ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+        .LogInformation("{Method} {Path} → {StatusCode} ({Elapsed}ms)",
+            ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+});
+
+app.UseExceptionHandler(handler => handler.Run(async ctx =>
+{
+    var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+    if (ex != null)
+        ctx.RequestServices.GetRequiredService<ILogger<Program>>()
+            .LogError(ex.Error, "Unhandled: {Message}", ex.Error.Message);
+
+    ctx.Response.StatusCode = 500;
+    await ctx.Response.WriteAsJsonAsync(new
+    {
+        error = "Internal Server Error",
+        detail = ex?.Error.Message ?? "Unknown error"
+    });
+}));
+
+
+app.MapControllers();
+
+app.Services.GetRequiredService<UserManager>();
+
+if (!Directory.Exists(ServerConfig.TemplatePath))
+    Console.Error.WriteLine($"WARNING: template directory not found: {ServerConfig.TemplatePath}");
+if (!Directory.Exists(ServerConfig.SuiteMasterFilePath))
+    Console.Error.WriteLine($"WARNING: suitemasterfile directory not found: {ServerConfig.SuiteMasterFilePath}");
+if (!Directory.Exists(ServerConfig.SekaiMasterDbDiffPath))
+    Console.Error.WriteLine($"WARNING: sekai-master-db-diff directory not found: {ServerConfig.SekaiMasterDbDiffPath}");
+
+Console.WriteLine($"Private Sekai is running on {ServerConfig.Port}");
+app.Run();

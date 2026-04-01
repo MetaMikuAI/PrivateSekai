@@ -1,12 +1,14 @@
-/__pycache__/
-__pycache__
-*.pyc
-
-
 /sekai-master-db-diff/
-/mitmanalyze/
-
 /suitemasterfile/*/
 
-/test
-config.py
+bin
+obj
+
+/*Reverse/
+/python-legacy/
+
+.github/copilot-instructions.md
+.idea
+*.py
+*.DotSettings.user
+appsettings.json

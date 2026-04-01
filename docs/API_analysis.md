@@ -805,6 +805,43 @@ response_data: dict[str, Any] = {
 }
 ```
 
+### `GET /api/user/{int:user_id}/story-favorite/friend/status/unit_story`
+
+response(stub)
+
+```json
+{
+    "friendStoryFavoriteStatuses": []
+}
+```
+
+### `GET /api/user/{int:user_id}/story-favorite/friend/status/event_story`
+
+response(stub)
+
+```json
+{
+    "friendStoryFavoriteStatuses": []
+}
+```
+
+### `GET /api/user/{int:user_id}/story-episode-bookmark/event_story/story/{int:story_id}`
+
+response(stub)
+
+```json
+{
+    "userStoryEpisodeBookmarks": []
+}
+```
+
+
+## 提示
+
+### `PUT /api/user/{int:user_id}/topic/{int:topic_id}`
+
+携带 magic hex，服务端 `DELETE FROM unreadUserTopics WHERE userId = {user_id} AND topicId = {topic_id}`，返回 `updatedResources` 包含 `unreadUserTopics`，客户端据此更新未读提示
+
 ## 临时分析
 
 ### POST /api/user/<userId:int>/story/special_story/episode/<specialEpisodeId:int>
