@@ -5,10 +5,10 @@ bin
 obj
 
 /*Reverse/
-/python-legacy/
 
 .github/copilot-instructions.md
 .idea
+
 *.py
 *.DotSettings.user
 appsettings.json

@@ -15,6 +15,8 @@ public static class ServerConfig
 
     public static int Port { get; private set; }
 
+    public static string GameVersionDomain { get; private set; } = null!;
+
     public static string TemplatePath { get; private set; } = null!;
     public static string SuiteMasterFilePath { get; private set; } = null!;
     public static string SekaiMasterDbDiffPath { get; private set; } = null!;
@@ -34,6 +36,8 @@ public static class ServerConfig
         SkipTutorial            = bool.Parse(Require(s, "SkipTutorial"));
         Debug                   = bool.Parse(Require(s, "Debug"));
         Port                    = int.Parse(Require(s, "Port"));
+
+        GameVersionDomain        = Require(s, "GameVersionDomain");
 
         var paths = s.GetSection("Paths");
         TemplatePath          = Require(paths, "Template");
