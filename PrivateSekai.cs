@@ -14,23 +14,22 @@ builder.Services.AddSingleton<UserManager>();
 builder.Services.AddControllers();
 
 var app = builder.Build();
+var appLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PrivateSekai");
 
 app.Use(async (ctx, next) =>
 {
     var sw = System.Diagnostics.Stopwatch.StartNew();
     await next();
     sw.Stop();
-    ctx.RequestServices.GetRequiredService<ILogger<Program>>()
-        .LogInformation("{Method} {Path} → {StatusCode} ({Elapsed}ms)",
-            ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+    appLogger.LogInformation("{Method} {Path} → {StatusCode} ({Elapsed}ms)",
+        ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
 });
 
 app.UseExceptionHandler(handler => handler.Run(async ctx =>
 {
     var ex = ctx.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
     if (ex != null)
-        ctx.RequestServices.GetRequiredService<ILogger<Program>>()
-            .LogError(ex.Error, "Unhandled: {Message}", ex.Error.Message);
+        appLogger.LogError(ex.Error, "Unhandled: {Message}", ex.Error.Message);
 
     ctx.Response.StatusCode = 500;
     await ctx.Response.WriteAsJsonAsync(new
