@@ -383,9 +383,205 @@ public class GameUser
         UpdateRefreshableTypes("userProfile");
     }
 
-    public void UpdateUserGamedata(UserGamedata newGamedata)
+    public void MergeUserGamedata(UserGamedata patch)
     {
-        Data.userGamedata = newGamedata;
+        if (Data.userGamedata == null)
+        {
+            Data.userGamedata = patch;
+            UpdateRefreshableTypes("userGamedata");
+            return;
+        }
+
+        var current = Data.userGamedata;
+        if (patch.userId != 0) current.userId = patch.userId;
+        if (patch.name != null) current.name = patch.name;
+        if (patch.deck != 0) current.deck = patch.deck;
+        if (patch.rank != 0) current.rank = patch.rank;
+        if (patch.exp != 0) current.exp = patch.exp;
+        if (patch.totalExp != 0) current.totalExp = patch.totalExp;
+        if (patch.coin != 0) current.coin = patch.coin;
+        if (patch.virtualCoin != 0) current.virtualCoin = patch.virtualCoin;
+        if (patch.lastLoginAt != 0) current.lastLoginAt = patch.lastLoginAt;
+        current.customProfileId = patch.customProfileId;
+
+        UpdateRefreshableTypes("userGamedata");
+    }
+
+    public void UpdateUserGamedata(UserGamedata newGamedata) =>
+        MergeUserGamedata(newGamedata);
+
+    // ===================== Custom Profile Mixin =====================
+
+    private void EnsureCustomProfileArrays()
+    {
+        Data.userCustomProfiles ??= [];
+        Data.userCustomProfileCards ??= [];
+        Data.userCustomProfileResourceUsages ??= [];
+    }
+
+    public void SetCurrentCustomProfile(int? customProfileId)
+    {
+        Data.userGamedata ??= new UserGamedata { userId = GetUserId() };
+        Data.userGamedata.customProfileId = customProfileId;
+        UpdateRefreshableTypes("userGamedata");
+    }
+
+    public void SaveCustomProfile(
+        int customProfileId,
+        string? name,
+        List<UserCustomProfileCardOrder>? customProfileCardOrders)
+    {
+        EnsureCustomProfileArrays();
+
+        var profiles = Data.userCustomProfiles!.ToList();
+        var profile = profiles.FirstOrDefault(p => p.customProfileId == customProfileId);
+        if (profile == null)
+        {
+            profiles.Add(new UserCustomProfile
+            {
+                customProfileId = customProfileId,
+                name = name ?? ""
+            });
+        }
+        else if (name != null)
+        {
+            profile.name = name;
+        }
+
+        var cards = Data.userCustomProfileCards!.ToList();
+        if (customProfileCardOrders != null)
+        {
+            foreach (var order in customProfileCardOrders.Where(o => o.customProfileId == customProfileId))
+            {
+                var card = cards.FirstOrDefault(c =>
+                    c.customProfileId == customProfileId &&
+                    c.customProfileCardId == order.customProfileCardId);
+                if (card != null)
+                    card.seq = order.seq;
+            }
+        }
+
+        Data.userCustomProfiles = profiles.ToArray();
+        Data.userCustomProfileCards = cards.ToArray();
+        UpdateCustomProfileResourceUsages(customProfileId);
+
+        UpdateRefreshableTypes("userCustomProfiles");
+        UpdateRefreshableTypes("userCustomProfileCards");
+    }
+
+    public void SaveCustomProfileCard(
+        int customProfileId,
+        int customProfileCardId,
+        UserSaveCustomProfileCardRequest request)
+    {
+        EnsureCustomProfileArrays();
+        EnsureCustomProfileExists(customProfileId);
+
+        var cards = Data.userCustomProfileCards!.ToList();
+        var card = cards.FirstOrDefault(c =>
+            c.customProfileId == customProfileId &&
+            c.customProfileCardId == customProfileCardId);
+
+        if (card == null)
+        {
+            var nextSeq = cards
+                .Where(c => c.customProfileId == customProfileId)
+                .Select(c => c.seq)
+                .DefaultIfEmpty(0)
+                .Max() + 1;
+
+            var thumbnailPath = CustomProfileThumbnailStore.SaveThumbnail(request.thumbnail);
+            cards.Add(new UserCustomProfileCard
+            {
+                customProfileId = customProfileId,
+                customProfileCardId = customProfileCardId,
+                thumbnailPath = thumbnailPath,
+                customProfileCard = request.customProfileCard,
+                seq = nextSeq
+            });
+        }
+        else
+        {
+            card.thumbnailPath = CustomProfileThumbnailStore.SaveThumbnail(request.thumbnail, card.thumbnailPath);
+            card.customProfileCard = request.customProfileCard;
+        }
+
+        Data.userCustomProfileCards = cards.ToArray();
+        UpdateCustomProfileResourceUsages(customProfileId);
+        UpdateRefreshableTypes("userCustomProfileCards");
+    }
+
+    public void DeleteCustomProfileCards(int customProfileId, int[] customProfileCardIds)
+    {
+        EnsureCustomProfileArrays();
+
+        var deleteIds = customProfileCardIds.ToHashSet();
+        var cards = Data.userCustomProfileCards!
+            .Where(c => c.customProfileId != customProfileId || !deleteIds.Contains(c.customProfileCardId))
+            .ToList();
+
+        var seq = 1;
+        foreach (var card in cards
+            .Where(c => c.customProfileId == customProfileId)
+            .OrderBy(c => c.seq)
+            .ThenBy(c => c.customProfileCardId))
+        {
+            card.seq = seq++;
+        }
+
+        Data.userCustomProfileCards = cards.ToArray();
+        UpdateCustomProfileResourceUsages(customProfileId);
+        UpdateRefreshableTypes("userCustomProfileCards");
+    }
+
+    public void UpdateCustomProfileResourceUsages(int customProfileId)
+    {
+        EnsureCustomProfileArrays();
+
+        var usageCounts = new Dictionary<int, int>();
+        foreach (var card in Data.userCustomProfileCards!.Where(c => c.customProfileId == customProfileId))
+        {
+            var collections = card.customProfileCard?.collections;
+            if (collections == null) continue;
+
+            foreach (var collection in collections)
+            {
+                if (collection.id <= 0) continue;
+                usageCounts.TryGetValue(collection.id, out var current);
+                usageCounts[collection.id] = current + 1;
+            }
+        }
+
+        var usages = Data.userCustomProfileResourceUsages!
+            .Where(u => u.customProfileId != customProfileId)
+            .ToList();
+
+        usages.AddRange(usageCounts
+            .OrderBy(kv => kv.Key)
+            .Select(kv => new UserCustomProfileResourceUsages
+            {
+                customProfileId = customProfileId,
+                customProfileResourceId = kv.Key,
+                quantity = kv.Value
+            }));
+
+        Data.userCustomProfileResourceUsages = usages.ToArray();
+        UpdateRefreshableTypes("userCustomProfileResourceUsages");
+    }
+
+    private void EnsureCustomProfileExists(int customProfileId)
+    {
+        var profiles = Data.userCustomProfiles!.ToList();
+        if (profiles.Any(p => p.customProfileId == customProfileId))
+            return;
+
+        profiles.Add(new UserCustomProfile
+        {
+            customProfileId = customProfileId,
+            name = ""
+        });
+        Data.userCustomProfiles = profiles.ToArray();
+        UpdateRefreshableTypes("userCustomProfiles");
     }
 
     // ===================== 工具方法 =====================

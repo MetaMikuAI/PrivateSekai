@@ -33,7 +33,7 @@ public class ProfileController : PrskController
             word = requestData.word,
             twitterId = requestData.twitterId,
             profileImageType = requestData.profileImageType,
-            profileImageId = requestData.profileImageId
+            profileImageId = requestData.profileImageId ?? 0
         });
 
         var responseData = new SuiteUserCommonResponse
@@ -59,7 +59,7 @@ public class ProfileController : PrskController
             return BadRequest("Missing userGamedata");
 
         var user = _users.GetUser(userId);
-        user.UpdateUserGamedata(requestData.userGamedata);
+        user.MergeUserGamedata(requestData.userGamedata);
 
         var responseData = new SuiteUserCommonResponse
         {

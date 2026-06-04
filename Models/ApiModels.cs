@@ -96,9 +96,12 @@ public class UserProfileRequest
 {
     [Key("userId")] public long userId;
     [Key("word")] public string? word;
+    [Key("honorId1")] public int? honorId1;
+    [Key("honorId2")] public int? honorId2;
+    [Key("honorId3")] public int? honorId3;
     [Key("twitterId")] public string? twitterId;
     [Key("profileImageType")] public string? profileImageType;
-    [Key("profileImageId")] public int profileImageId;
+    [Key("profileImageId")] public int? profileImageId;
 }
 
 [MessagePackObject]
