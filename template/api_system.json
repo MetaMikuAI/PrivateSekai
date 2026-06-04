@@ -631,7 +631,28 @@
             "systemProfile": "production",
             "appVersion": "6.4.0",
             "multiPlayVersion": "kaito",
-            "assetVersion": "6.4.0.20",
+            "assetVersion": "6.4.0.30",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.4.1",
+            "multiPlayVersion": "kaito",
+            "assetVersion": "6.4.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.5.0",
+            "multiPlayVersion": "kaito",
+            "assetVersion": "6.5.0.60",
+            "appVersionStatus": "not_available"
+        },
+        {
+            "systemProfile": "production",
+            "appVersion": "6.5.5",
+            "multiPlayVersion": "kaito",
+            "assetVersion": "6.5.5.10",
             "appVersionStatus": "available"
         }
     ]
