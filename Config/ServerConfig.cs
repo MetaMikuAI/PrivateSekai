@@ -7,7 +7,7 @@ public static class ServerConfig
     public static byte[] AesKey { get; private set; } = null!;
     public static byte[] AesIv  { get; private set; } = null!;
     public static string JwtKey { get; private set; } = null!;
-    public static byte[] MagicBytes { get; private set; } = null!;
+    public static byte[] EmptyRequestCiphertext { get; private set; } = null!;
 
     public static bool IgnoreInvalidCredential { get; private set; }
     public static bool SkipTutorial { get; private set; }
@@ -30,7 +30,7 @@ public static class ServerConfig
         AesKey      = Encoding.UTF8.GetBytes(Require(s, "AesKey"));
         AesIv       = Encoding.UTF8.GetBytes(Require(s, "AesIv"));
         JwtKey      = Require(s, "JwtKey");
-        MagicBytes  = Convert.FromHexString(Require(s, "MagicBytes"));
+        EmptyRequestCiphertext = Convert.FromHexString(Require(s, "EmptyRequestCiphertext"));
 
         IgnoreInvalidCredential = bool.Parse(Require(s, "IgnoreInvalidCredential"));
         SkipTutorial            = bool.Parse(Require(s, "SkipTutorial"));

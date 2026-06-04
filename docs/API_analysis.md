@@ -471,7 +471,7 @@ ff a3 45 21  56 f3 75 35  68 bf 3f 2e  2a b2 ee db
 
 （该数据亦有脱敏）
 
-该序列总是出现，含义未知，可能是某种设备指纹，我们记他为 Magic Hex
+该序列总是出现，命名为 EmptyRequestCiphertext；它是 AES-CBC/PKCS7 加密空请求体 `byte[0]` 的固定密文。
 
 
 #### Response
@@ -840,7 +840,7 @@ response(stub)
 
 ### `PUT /api/user/{int:user_id}/topic/{int:topic_id}`
 
-携带 magic hex，服务端 `DELETE FROM unreadUserTopics WHERE userId = {user_id} AND topicId = {topic_id}`，返回 `updatedResources` 包含 `unreadUserTopics`，客户端据此更新未读提示
+携带 EmptyRequestCiphertext，服务端 `DELETE FROM unreadUserTopics WHERE userId = {user_id} AND topicId = {topic_id}`，返回 `updatedResources` 包含 `unreadUserTopics`，客户端据此更新未读提示
 
 ## 临时分析
 
