@@ -57,4 +57,18 @@ public class LoginController : PrskController
         var responseData = user.GetSuiteUserData();
         return PrskResponse(responseData);
     }
+
+    /// <summary>
+    /// GET /api/suite/user/{userId}/parts?name=...
+    /// </summary>
+    [HttpGet("api/suite/user/{userId}/parts")]
+    public IActionResult HandleSuiteUserParts(long userId, [FromQuery(Name = "name")] string[]? names)
+    {
+        var user = _users.UserExists(userId)
+            ? _users.GetUser(userId)
+            : _users.GetUser(0);
+
+        var responseData = user.GetSuiteUserParts(names);
+        return PrskResponse(responseData);
+    }
 }

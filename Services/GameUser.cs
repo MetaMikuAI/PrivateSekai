@@ -28,6 +28,8 @@ public class GameUser
                 f => f
             );
 
+    private const long TemplatePlaceholderTimestamp = 1188486000000L; // 2007-08-30T15:00:00Z
+
     public GameUser(SuiteUser data)
     {
         Data = data;
@@ -99,7 +101,10 @@ public class GameUser
 
     public SuiteUser GetSuiteUserData()
     {
-        Data.now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Data.now = now;
+        NormalizeUserEventBreakTime(now);
+
         // MessagePack 序列化往返实现深拷贝
         var bytes = MessagePackSerializer.Serialize(Data);
         return MessagePackSerializer.Deserialize<SuiteUser>(bytes);
@@ -107,6 +112,9 @@ public class GameUser
 
     public SuiteUser GetRefreshData(HashSet<string>? deleteRtypes = null)
     {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        NormalizeUserEventBreakTime(now);
+
         var baseRtypes = new HashSet<string>
         {
             "now", "refreshableTypes", "userPresents", "unreadUserTopics",
@@ -138,9 +146,58 @@ public class GameUser
                     field.SetValue(result, value);
             }
         }
-        result.now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        result.now = now;
 
         return result;
+    }
+
+    public SuiteUser GetSuiteUserParts(IEnumerable<string>? partNames)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        NormalizeUserEventBreakTime(now);
+
+        var result = new SuiteUser
+        {
+            now = now,
+            refreshableTypes = []
+        };
+
+        var hasPart = false;
+        if (partNames != null)
+        {
+            foreach (var partName in partNames)
+            {
+                switch (partName)
+                {
+                    case "user_event_break_time":
+                        result.userEventBreakTime = Data.userEventBreakTime;
+                        hasPart = true;
+                        break;
+                    case "user_friend":
+                        result.userFriends = Data.userFriends;
+                        hasPart = true;
+                        break;
+                }
+            }
+        }
+
+        return hasPart ? result : GetRefreshData();
+    }
+
+    private void NormalizeUserEventBreakTime(long now)
+    {
+        var userEventBreakTime = Data.userEventBreakTime;
+        if (userEventBreakTime == null)
+            return;
+
+        if (userEventBreakTime.lastDecreaseAt > 0 &&
+            userEventBreakTime.lastDecreaseAt != TemplatePlaceholderTimestamp)
+        {
+            return;
+        }
+
+        userEventBreakTime.lastDecreaseAt = now;
+        userEventBreakTime.playTimeUsedMillis = 0;
     }
     
     public void UpdateUserName(string newName)
@@ -198,6 +255,12 @@ public class GameUser
 
     /// <summary>cardEpisodes.json 的缓存</summary>
     private static JsonArray? _cardEpisodesCache;
+    private static JsonArray? _musicDifficultiesCache;
+    private static JsonArray? _boostsCache;
+    private static JsonArray? _musicAchievementsCache;
+    private static JsonArray? _resourceBoxesCache;
+    private static JsonArray? _liveMissionPassesCache;
+    private static JsonArray? _playLevelScoresCache;
 
     private static JsonArray LoadCardEpisodes()
     {
@@ -207,6 +270,66 @@ public class GameUser
         var json = File.ReadAllText(path);
         _cardEpisodesCache = JsonNode.Parse(json)!.AsArray();
         return _cardEpisodesCache;
+    }
+
+    private static JsonArray LoadMusicDifficulties()
+    {
+        if (_musicDifficultiesCache != null) return _musicDifficultiesCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicDifficulties.json");
+        var json = File.ReadAllText(path);
+        _musicDifficultiesCache = JsonNode.Parse(json)!.AsArray();
+        return _musicDifficultiesCache;
+    }
+
+    private static JsonArray LoadBoosts()
+    {
+        if (_boostsCache != null) return _boostsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "boosts.json");
+        var json = File.ReadAllText(path);
+        _boostsCache = JsonNode.Parse(json)!.AsArray();
+        return _boostsCache;
+    }
+
+    private static JsonArray LoadMusicAchievements()
+    {
+        if (_musicAchievementsCache != null) return _musicAchievementsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicAchievements.json");
+        var json = File.ReadAllText(path);
+        _musicAchievementsCache = JsonNode.Parse(json)!.AsArray();
+        return _musicAchievementsCache;
+    }
+
+    private static JsonArray LoadResourceBoxes()
+    {
+        if (_resourceBoxesCache != null) return _resourceBoxesCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "resourceBoxes.json");
+        var json = File.ReadAllText(path);
+        _resourceBoxesCache = JsonNode.Parse(json)!.AsArray();
+        return _resourceBoxesCache;
+    }
+
+    private static JsonArray LoadLiveMissionPasses()
+    {
+        if (_liveMissionPassesCache != null) return _liveMissionPassesCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "liveMissionPasses.json");
+        var json = File.ReadAllText(path);
+        _liveMissionPassesCache = JsonNode.Parse(json)!.AsArray();
+        return _liveMissionPassesCache;
+    }
+
+    private static JsonArray LoadPlayLevelScores()
+    {
+        if (_playLevelScoresCache != null) return _playLevelScoresCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "playLevelScores.json");
+        var json = File.ReadAllText(path);
+        _playLevelScoresCache = JsonNode.Parse(json)!.AsArray();
+        return _playLevelScoresCache;
     }
 
     private static List<int> GetCardEpisodeIds(int cardId)
@@ -584,6 +707,671 @@ public class GameUser
         UpdateRefreshableTypes("userCustomProfiles");
     }
 
+    // ===================== Live Mixin =====================
+
+    public UserLive StartUserLive(UserLiveRequest request)
+    {
+        var userLiveId = Guid.NewGuid().ToString();
+        NotSuite.UserLiveSessions[userLiveId] = new UserLiveSessionData
+        {
+            UserLiveId = userLiveId,
+            MusicId = request.musicId,
+            MusicDifficultyId = request.musicDifficultyId,
+            MusicVocalId = request.musicVocalId,
+            DeckId = request.deckId,
+            BoostCount = request.boostCount,
+            IsAuto = request.isAuto,
+            MusicCategoryName = request.musicCategoryName,
+            CustomMusicScoreId = request.customMusicScoreId,
+            CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+        };
+
+        UpdateRefreshableTypes("userEventBreakTime");
+        return new UserLive
+        {
+            userLiveId = userLiveId,
+            updatedResources = GetRefreshData(),
+            skills = BuildIngameLotterySkills(request.deckId),
+            comboCutins = [],
+            isInBreakTime = false
+        };
+    }
+
+    public UserLiveClearResponse ClearUserLive(string userLiveId, UserLiveClearRequest request)
+    {
+        NotSuite.UserLiveSessions.Remove(userLiveId, out var session);
+
+        var fullCombo = request.badCount == 0 && request.missCount == 0;
+        var fullPerfect = request.greatCount == 0 &&
+                          request.goodCount == 0 &&
+                          request.badCount == 0 &&
+                          request.missCount == 0;
+
+        var scoreRank = session != null ? BuildScoreRank(session.MusicDifficultyId, request.score) : BuildScoreRank(request.score);
+        var boost = BuildMasterBoost(session?.BoostCount ?? 0);
+        var userLivePoint = BuildUserLivePoint(boost);
+        var highScoreFlg = false;
+        DeckCardUpdateExpResult[] deckCardExpResults = [];
+        UserMusicAchievement[] grantedMusicAchievements = [];
+        UserResource[] scoreRankRewards = [];
+        UserResource[] musicAchievementRewards = [];
+        if (session != null)
+        {
+            highScoreFlg = UpdateUserMusicResult(session, request, fullCombo, fullPerfect);
+            deckCardExpResults = BuildDeckCardExpResults(session.DeckId);
+            grantedMusicAchievements = GrantUserMusicAchievements(session, request, scoreRank);
+            scoreRankRewards = BuildScoreRankRewards(session.MusicDifficultyId, scoreRank, boost);
+            musicAchievementRewards = BuildMusicAchievementRewards(grantedMusicAchievements);
+            ApplyLiveRewards(scoreRankRewards);
+            ApplyLiveRewards(musicAchievementRewards);
+            UpdateLiveMissionProgress(userLivePoint);
+            ConsumeBoost(session.BoostCount);
+        }
+
+        MergeLiveCharacterArchiveVoiceGroups(request.ingameCutinCharacterArchiveVoiceGroupIds);
+
+        return new UserLiveClearResponse
+        {
+            updatedResources = GetRefreshData(),
+            scoreRank = scoreRank,
+            score = request.score,
+            perfectCount = request.perfectCount,
+            greatCount = request.greatCount,
+            goodCount = request.goodCount,
+            badCount = request.badCount,
+            missCount = request.missCount,
+            maxCombo = request.maxCombo,
+            highScoreFlg = highScoreFlg,
+            fullComboFlg = fullCombo,
+            fullPerfectFlg = fullPerfect,
+            userExpResult = BuildNoopExpResult(),
+            deckCardExpResults = deckCardExpResults,
+            unitExpResults = [],
+            userDeck = GetUserDeck(session?.DeckId),
+            userMusicAchievements = grantedMusicAchievements,
+            scoreRankRewards = scoreRankRewards,
+            playerRankRewards = [],
+            limitedTermScoreRankRewards = [],
+            musicAchievementRewards = musicAchievementRewards,
+            boost = boost,
+            beforeEventPoint = 0,
+            afterEventPoint = 0,
+            beforeEventItemQuantity = 0,
+            afterEventItemQuantity = 0,
+            beforeWorldBloomChapterPoint = null,
+            afterWorldBloomChapterPoint = null,
+            worldBloomChapterNo = null,
+            isPreliminaryTournament = false,
+            bondsUpdateExpResults = [],
+            userEventDeviceTransferRestrict = new UserRestrictInfo(),
+            userLivePoint = userLivePoint,
+            isEventMaintenance = false,
+            isInBreakTime = false
+        };
+    }
+
+    public void ReceiveLiveCharacterArchiveVoiceResult(int liveResultCharacterArchiveVoiceGroupId)
+    {
+        if (liveResultCharacterArchiveVoiceGroupId <= 0)
+            return;
+
+        MergeLiveCharacterArchiveVoiceGroups([liveResultCharacterArchiveVoiceGroupId]);
+    }
+
+    private bool UpdateUserMusicResult(
+        UserLiveSessionData session,
+        UserLiveClearRequest request,
+        bool fullCombo,
+        bool fullPerfect)
+    {
+        Data.userMusicResults ??= [];
+        var results = Data.userMusicResults.ToList();
+        var difficultyType = ResolveMusicDifficultyType(session.MusicDifficultyId);
+        var result = results.FirstOrDefault(r =>
+            r.musicId == session.MusicId &&
+            string.Equals(r.musicDifficultyType, difficultyType, StringComparison.Ordinal));
+
+        var previousHighScore = result?.highScore ?? 0;
+        var highScoreFlg = request.score > previousHighScore;
+
+        if (result == null)
+        {
+            result = new UserMusicResult
+            {
+                musicId = session.MusicId,
+                musicDifficultyType = difficultyType,
+                playType = "solo",
+                playResult = "clear"
+            };
+            results.Add(result);
+        }
+
+        result.playType = "solo";
+        result.playResult = BuildPlayResult(fullCombo, fullPerfect, request.life);
+        result.highScore = Math.Max(result.highScore, request.score);
+        result.fullComboFlg = result.fullComboFlg || fullCombo;
+        result.fullPerfectFlg = result.fullPerfectFlg || fullPerfect;
+
+        Data.userMusicResults = results.ToArray();
+        UpdateRefreshableTypes("userMusicResults");
+        return highScoreFlg;
+    }
+
+    private UserMusicAchievement[] GrantUserMusicAchievements(
+        UserLiveSessionData session,
+        UserLiveClearRequest request,
+        string scoreRank)
+    {
+        var achievementIds = ResolveMusicAchievementIds(session.MusicDifficultyId, request.maxCombo, scoreRank);
+
+        Data.userMusicAchievements ??= [];
+        var achievements = Data.userMusicAchievements.ToList();
+        var granted = new List<UserMusicAchievement>();
+
+        foreach (var achievementId in achievementIds.Distinct())
+        {
+            if (achievements.Any(a => a.musicId == session.MusicId && a.musicAchievementId == achievementId))
+                continue;
+
+            var achievement = new UserMusicAchievement
+            {
+                musicId = session.MusicId,
+                musicAchievementId = achievementId
+            };
+            achievements.Add(achievement);
+            granted.Add(achievement);
+        }
+
+        if (granted.Count > 0)
+        {
+            Data.userMusicAchievements = achievements.ToArray();
+            UpdateRefreshableTypes("userMusicAchievements");
+        }
+
+        return granted.ToArray();
+    }
+
+    private static UserResource[] BuildMusicAchievementRewards(UserMusicAchievement[] achievements)
+    {
+        var rewards = new List<UserResource>();
+        foreach (var achievement in achievements)
+        {
+            var resourceBoxId = GetMusicAchievementResourceBoxId(achievement.musicAchievementId);
+            rewards.AddRange(BuildResourcesFromBox("music_achievement", resourceBoxId));
+        }
+
+        return rewards.ToArray();
+    }
+
+    private static UserResource[] BuildScoreRankRewards(int musicDifficultyId, string scoreRank, MasterBoost boost)
+    {
+        var playLevel = ResolveMusicPlayLevel(musicDifficultyId);
+        var resourceBoxIds = GetScoreRankRewardResourceBoxIds(playLevel, scoreRank);
+        if (resourceBoxIds.Length == 0)
+            return [];
+
+        var rewardRate = Math.Max(1, boost.rewardRate);
+        return resourceBoxIds
+            .SelectMany(resourceBoxId => BuildResourcesFromBox("score_rank_reward_detail", resourceBoxId))
+            .Select(reward => new UserResource
+            {
+                resourceType = reward.resourceType,
+                resourceId = reward.resourceId,
+                resourceLevel = reward.resourceLevel,
+                quantity = reward.quantity * rewardRate
+            })
+            .Where(reward => reward.quantity > 0)
+            .ToArray();
+    }
+
+    private static int[] GetScoreRankRewardResourceBoxIds(int playLevel, string scoreRank) =>
+        (playLevel, scoreRank) switch
+        {
+            // 6.5.5 capture 0054: musicDifficultyId 406, playLevel 6, rank_c.
+            (6, "rank_c") => [62, 12, 19, 15, 47, 56],
+
+            // 6.5.5 capture 0061: musicDifficultyId 313, playLevel 17, rank_d.
+            (17, "rank_d") => [61, 20],
+
+            _ => []
+        };
+
+    private void ApplyLiveRewards(IEnumerable<UserResource> rewards)
+    {
+        foreach (var reward in rewards)
+        {
+            if (reward.quantity <= 0)
+                continue;
+
+            switch (reward.resourceType)
+            {
+                case "jewel":
+                    Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
+                    Data.userChargedCurrency.free += reward.quantity;
+                    UpdateRefreshableTypes("userChargedCurrency");
+                    break;
+                case "coin":
+                    if (Data.userGamedata != null)
+                    {
+                        Data.userGamedata.coin += reward.quantity;
+                        UpdateRefreshableTypes("userGamedata");
+                    }
+                    break;
+                case "material":
+                    AddMaterial(reward.resourceId, reward.quantity);
+                    break;
+                case "practice_ticket":
+                    AddPracticeTicket(reward.resourceId, reward.quantity);
+                    break;
+            }
+        }
+    }
+
+    private void AddMaterial(int materialId, int quantity)
+    {
+        if (materialId <= 0 || quantity <= 0)
+            return;
+
+        Data.userMaterials ??= [];
+        var materials = Data.userMaterials.ToList();
+        var material = materials.FirstOrDefault(m => m.materialId == materialId);
+        if (material == null)
+        {
+            material = new UserMaterial { materialId = materialId };
+            materials.Add(material);
+        }
+
+        material.quantity += quantity;
+        Data.userMaterials = materials.ToArray();
+        UpdateRefreshableTypes("userMaterials");
+    }
+
+    private void AddPracticeTicket(int practiceTicketId, int quantity)
+    {
+        if (practiceTicketId <= 0 || quantity <= 0)
+            return;
+
+        Data.userPracticeTickets ??= [];
+        var tickets = Data.userPracticeTickets.ToList();
+        var ticket = tickets.FirstOrDefault(t => t.practiceTicketId == practiceTicketId);
+        if (ticket == null)
+        {
+            ticket = new UserPracticeTicket
+            {
+                userId = GetUserId(),
+                practiceTicketId = practiceTicketId
+            };
+            tickets.Add(ticket);
+        }
+
+        ticket.quantity += quantity;
+        Data.userPracticeTickets = tickets.ToArray();
+        UpdateRefreshableTypes("userPracticeTickets");
+    }
+
+    private void ConsumeBoost(int boostCount)
+    {
+        if (Data.userBoost == null || boostCount <= 0)
+            return;
+
+        Data.userBoost.current = Math.Max(0, Data.userBoost.current - boostCount);
+        Data.userBoost.recoveryAt = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        UpdateRefreshableTypes("userBoost");
+    }
+
+    private void MergeLiveCharacterArchiveVoiceGroups(IEnumerable<int>? groupIds)
+    {
+        if (groupIds == null)
+            return;
+
+        Data.userLiveCharacterArchiveVoice ??= new UserLiveCharacterArchiveVoice
+        {
+            characterArchiveVoiceGroupIds = []
+        };
+        Data.userLiveCharacterArchiveVoice.characterArchiveVoiceGroupIds ??= [];
+
+        var changed = false;
+        var current = Data.userLiveCharacterArchiveVoice.characterArchiveVoiceGroupIds;
+        foreach (var groupId in groupIds.Where(id => id > 0))
+        {
+            if (current.Contains(groupId))
+                continue;
+
+            current.Add(groupId);
+            changed = true;
+        }
+
+        if (changed)
+            UpdateRefreshableTypes("userLiveCharacterArchiveVoice");
+    }
+
+    private UserDeck? GetUserDeck(int? deckId)
+    {
+        if (deckId == null || Data.userDecks == null)
+            return null;
+
+        return Data.userDecks.FirstOrDefault(d => d.deckId == deckId.Value);
+    }
+
+    private IngameLotterySkill[] BuildIngameLotterySkills(int deckId)
+    {
+        var deck = GetUserDeck(deckId);
+        if (deck == null)
+            return [];
+
+        var cardIds = new[] { deck.leader, deck.member1, deck.member2, deck.member3, deck.member4, deck.member5 };
+        return cardIds
+            .Where(cardId => cardId > 0)
+            .Select((cardId, index) => new IngameLotterySkill
+            {
+                seq = index + 1,
+                cardId = cardId,
+                relationCardId = null,
+                ingameCutinCharacterId = null
+            })
+            .ToArray();
+    }
+
+    private DeckCardUpdateExpResult[] BuildDeckCardExpResults(int deckId)
+    {
+        var deck = GetUserDeck(deckId);
+        if (deck == null || Data.userCards == null)
+            return [];
+
+        var cardIds = new[] { deck.member1, deck.member2, deck.member3, deck.member4, deck.member5 };
+        return cardIds
+            .Select((cardId, index) => new { cardId, index })
+            .Where(slot => slot.cardId > 0 && Data.userCards.Any(card => card.cardId == slot.cardId))
+            .Select(slot =>
+            {
+                var card = Data.userCards!.First(card => card.cardId == slot.cardId);
+                return new DeckCardUpdateExpResult
+                {
+                    index = slot.index + 1,
+                    expResult = new UpdateExpResult
+                    {
+                        beforeTotalExp = card.totalExp,
+                        afterTotalExp = card.totalExp,
+                        beforeExp = card.exp,
+                        afterExp = card.exp,
+                        beforeLevel = card.level,
+                        afterLevel = card.level
+                    }
+                };
+            })
+            .ToArray();
+    }
+
+    private UpdateExpResult BuildNoopExpResult()
+    {
+        var gd = Data.userGamedata;
+        return new UpdateExpResult
+        {
+            beforeTotalExp = gd?.totalExp ?? 0,
+            afterTotalExp = gd?.totalExp ?? 0,
+            beforeExp = gd?.exp ?? 0,
+            afterExp = gd?.exp ?? 0,
+            beforeLevel = gd?.rank ?? 0,
+            afterLevel = gd?.rank ?? 0
+        };
+    }
+
+    private static MasterBoost BuildMasterBoost(int boostCount)
+    {
+        foreach (var boost in LoadBoosts())
+        {
+            if (boost is JsonObject obj && obj["costBoost"]?.GetValue<int>() == boostCount)
+            {
+                return new MasterBoost
+                {
+                    id = obj["id"]?.GetValue<int>() ?? boostCount + 1,
+                    costBoost = boostCount,
+                    isEventOnly = obj["isEventOnly"]?.GetValue<bool>() ?? false,
+                    expRate = obj["expRate"]?.GetValue<int>() ?? 1,
+                    rewardRate = obj["rewardRate"]?.GetValue<int>() ?? 1,
+                    livePointRate = obj["livePointRate"]?.GetValue<int>() ?? 1,
+                    eventPointRate = obj["eventPointRate"]?.GetValue<int>() ?? 1,
+                    bondsExpRate = obj["bondsExpRate"]?.GetValue<int>() ?? 1
+                };
+            }
+        }
+
+        var rate = boostCount <= 0 ? 1 : boostCount * 5;
+        return new MasterBoost
+        {
+            id = boostCount + 1,
+            costBoost = boostCount,
+            isEventOnly = false,
+            expRate = rate,
+            rewardRate = rate,
+            livePointRate = rate,
+            eventPointRate = rate,
+            bondsExpRate = rate
+        };
+    }
+
+    private static UserLivePoint BuildUserLivePoint(MasterBoost boost) =>
+        new()
+        {
+            addNormalProgress = boost.livePointRate,
+            addDailyBonusProgress = 0,
+            livePointBonusRemaining = boost.costBoost,
+            liveMissionPeriodId = GetCurrentLiveMissionPeriodId()
+        };
+
+    private void UpdateLiveMissionProgress(UserLivePoint livePoint)
+    {
+        if (livePoint.liveMissionPeriodId <= 0 || livePoint.addNormalProgress <= 0)
+            return;
+
+        Data.userLiveMissions ??= [];
+        var missions = Data.userLiveMissions.ToList();
+        var mission = missions.FirstOrDefault(m =>
+            m.liveMissionPeriodId == livePoint.liveMissionPeriodId &&
+            string.Equals(m.liveMissionStatus, "free", StringComparison.Ordinal));
+
+        if (mission == null)
+        {
+            mission = new UserLiveMission
+            {
+                userId = GetUserId(),
+                liveMissionPeriodId = livePoint.liveMissionPeriodId,
+                liveMissionStatus = "free",
+                achievedMissionIds = []
+            };
+            missions.Add(mission);
+        }
+
+        mission.progress += livePoint.addNormalProgress;
+        mission.achievedMissionIds ??= [];
+        Data.userLiveMissions = missions.ToArray();
+        UpdateRefreshableTypes("userLiveMissions");
+    }
+
+    private static string BuildScoreRank(int musicDifficultyId, int score)
+    {
+        var playLevel = ResolveMusicPlayLevel(musicDifficultyId);
+        if (playLevel > 0)
+        {
+            foreach (var scoreThreshold in LoadPlayLevelScores())
+            {
+                if (scoreThreshold is not JsonObject obj ||
+                    !string.Equals(obj["liveType"]?.GetValue<string>(), "solo", StringComparison.Ordinal) ||
+                    obj["playLevel"]?.GetValue<int>() != playLevel)
+                    continue;
+
+                if (score >= (obj["s"]?.GetValue<int>() ?? int.MaxValue))
+                    return "rank_s";
+                if (score >= (obj["a"]?.GetValue<int>() ?? int.MaxValue))
+                    return "rank_a";
+                if (score >= (obj["b"]?.GetValue<int>() ?? int.MaxValue))
+                    return "rank_b";
+                if (score >= (obj["c"]?.GetValue<int>() ?? int.MaxValue))
+                    return "rank_c";
+                return "rank_d";
+            }
+        }
+
+        return BuildScoreRank(score);
+    }
+
+    private static string BuildScoreRank(int score) =>
+        score switch
+        {
+            >= 600_000 => "rank_s",
+            >= 300_000 => "rank_a",
+            >= 150_000 => "rank_b",
+            >= 50_000 => "rank_c",
+            _ => "rank_d"
+        };
+
+    private static string BuildPlayResult(bool fullCombo, bool fullPerfect, int life)
+    {
+        if (life <= 0)
+            return "not_clear";
+        if (fullPerfect)
+            return "full_perfect";
+        if (fullCombo)
+            return "full_combo";
+        return "clear";
+    }
+
+    private static int[] ResolveMusicAchievementIds(int musicDifficultyId, int maxCombo, string scoreRank)
+    {
+        var difficultyType = ResolveMusicDifficultyType(musicDifficultyId);
+        var totalNoteCount = ResolveMusicTotalNoteCount(musicDifficultyId);
+        var achievementIds = new List<int>();
+
+        foreach (var achievement in LoadMusicAchievements())
+        {
+            if (achievement is not JsonObject obj)
+                continue;
+
+            var type = obj["musicAchievementType"]?.GetValue<string>();
+            var value = obj["musicAchievementTypeValue"]?.GetValue<string>();
+            if (type == "score_rank" && IsScoreRankReached(scoreRank, value))
+            {
+                achievementIds.Add(obj["id"]!.GetValue<int>());
+                continue;
+            }
+
+            if (type != "combo" ||
+                !string.Equals(obj["musicDifficultyType"]?.GetValue<string>(), difficultyType, StringComparison.Ordinal) ||
+                totalNoteCount <= 0 ||
+                value == null ||
+                !double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ratio))
+                continue;
+
+            if (maxCombo >= (int)Math.Ceiling(totalNoteCount * ratio))
+                achievementIds.Add(obj["id"]!.GetValue<int>());
+        }
+
+        return achievementIds.OrderBy(id => id).ToArray();
+    }
+
+    private static bool IsScoreRankReached(string scoreRank, string? achievementRank)
+    {
+        var actual = ScoreRankOrder(scoreRank);
+        var required = ScoreRankOrder(achievementRank);
+        return required > 0 && actual >= required;
+    }
+
+    private static int ScoreRankOrder(string? rank)
+    {
+        var normalized = rank?.ToUpperInvariant();
+        return normalized switch
+        {
+            "RANK_SS" or "RANK_S" or "RANK_S_PLUS" => 4,
+            "RANK_A" => 3,
+            "RANK_B" => 2,
+            "RANK_C" => 1,
+            _ => 0
+        };
+    }
+
+    private static int GetMusicAchievementResourceBoxId(int musicAchievementId)
+    {
+        foreach (var achievement in LoadMusicAchievements())
+        {
+            if (achievement is JsonObject obj && obj["id"]?.GetValue<int>() == musicAchievementId)
+                return obj["resourceBoxId"]?.GetValue<int>() ?? 0;
+        }
+
+        return 0;
+    }
+
+    private static UserResource[] BuildResourcesFromBox(string purpose, int resourceBoxId)
+    {
+        if (resourceBoxId <= 0)
+            return [];
+
+        foreach (var box in LoadResourceBoxes())
+        {
+            if (box is not JsonObject obj ||
+                !string.Equals(obj["resourceBoxPurpose"]?.GetValue<string>(), purpose, StringComparison.Ordinal) ||
+                obj["id"]?.GetValue<int>() != resourceBoxId ||
+                obj["details"] is not JsonArray details)
+                continue;
+
+            return details
+                .OfType<JsonObject>()
+                .Select(detail => new UserResource
+                {
+                    resourceType = detail["resourceType"]?.GetValue<string>(),
+                    resourceId = detail["resourceId"]?.GetValue<int>() ?? 0,
+                    resourceLevel = detail["resourceLevel"]?.GetValue<int>() ?? 0,
+                    quantity = detail["resourceQuantity"]?.GetValue<int>() ?? 0
+                })
+                .ToArray();
+        }
+
+        return [];
+    }
+
+    private static int GetCurrentLiveMissionPeriodId()
+    {
+        var current = 0;
+        foreach (var pass in LoadLiveMissionPasses())
+        {
+            if (pass is JsonObject obj)
+                current = Math.Max(current, obj["liveMissionPeriodId"]?.GetValue<int>() ?? 0);
+        }
+
+        return current;
+    }
+
+    private static string ResolveMusicDifficultyType(int musicDifficultyId)
+    {
+        var difficulty = FindMusicDifficulty(musicDifficultyId);
+        if (difficulty != null)
+            return difficulty["musicDifficulty"]?.GetValue<string>() ?? musicDifficultyId.ToString();
+
+        return musicDifficultyId.ToString();
+    }
+
+    private static int ResolveMusicTotalNoteCount(int musicDifficultyId)
+    {
+        var difficulty = FindMusicDifficulty(musicDifficultyId);
+        return difficulty?["totalNoteCount"]?.GetValue<int>() ?? 0;
+    }
+
+    private static int ResolveMusicPlayLevel(int musicDifficultyId)
+    {
+        var difficulty = FindMusicDifficulty(musicDifficultyId);
+        return difficulty?["playLevel"]?.GetValue<int>() ?? 0;
+    }
+
+    private static JsonObject? FindMusicDifficulty(int musicDifficultyId)
+    {
+        foreach (var difficulty in LoadMusicDifficulties())
+        {
+            if (difficulty is JsonObject obj && obj["id"]?.GetValue<int>() == musicDifficultyId)
+                return obj;
+        }
+
+        return null;
+    }
+
     // ===================== 工具方法 =====================
 
     private static readonly Random Rng = new();
@@ -608,7 +1396,22 @@ public class GameUser
             {
                 InheritId = NotSuite.InheritId,
                 InheritPassword = NotSuite.InheritPassword,
-                PresentHistories = [.. NotSuite.PresentHistories]
+                PresentHistories = [.. NotSuite.PresentHistories],
+                UserLiveSessions = NotSuite.UserLiveSessions.ToDictionary(
+                    kv => kv.Key,
+                    kv => new UserLiveSessionData
+                    {
+                        UserLiveId = kv.Value.UserLiveId,
+                        MusicId = kv.Value.MusicId,
+                        MusicDifficultyId = kv.Value.MusicDifficultyId,
+                        MusicVocalId = kv.Value.MusicVocalId,
+                        DeckId = kv.Value.DeckId,
+                        BoostCount = kv.Value.BoostCount,
+                        IsAuto = kv.Value.IsAuto,
+                        MusicCategoryName = kv.Value.MusicCategoryName,
+                        CustomMusicScoreId = kv.Value.CustomMusicScoreId,
+                        CreatedAt = kv.Value.CreatedAt
+                    })
             }
         };
         return user;

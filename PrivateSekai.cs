@@ -21,8 +21,8 @@ app.Use(async (ctx, next) =>
     var sw = System.Diagnostics.Stopwatch.StartNew();
     await next();
     sw.Stop();
-    appLogger.LogInformation("{Method} {Path} → {StatusCode} ({Elapsed}ms)",
-        ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+    appLogger.LogInformation("{Method} {Path}{QueryString} → {StatusCode} ({Elapsed}ms)",
+        ctx.Request.Method, ctx.Request.Path, ctx.Request.QueryString, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
 });
 
 app.UseExceptionHandler(handler => handler.Run(async ctx =>

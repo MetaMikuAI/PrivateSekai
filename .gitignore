@@ -10,5 +10,7 @@ obj
 .idea
 
 *.py
+__pycache__/
+mitm/
 *.DotSettings.user
 appsettings.json
