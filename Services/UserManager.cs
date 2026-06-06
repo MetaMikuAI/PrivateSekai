@@ -51,14 +51,44 @@ public class UserManager
         var data = JsonSerializer.Deserialize<SuiteUser>(json, JsonOpts)!;
 
         var user = new GameUser(data);
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        user.Data.now = now;
+        if (ServerConfig.SkipTutorial)
+        {
+            user.Data.userTutorial = new UserTutorial
+            {
+                tutorialStatus = "end",
+                tutorialEndAt = now
+            };
+        }
+        user.EnsureShopAreaActionSets();
 
         // 对应 Python config.py 的 user_customize_patch
         UserCustomizePatch?.Invoke(user);
         // 默认补丁：设置 paid = 20070831
         if (user.Data.userChargedCurrency != null)
             user.Data.userChargedCurrency.paid = 20070831;
+        SetUserMaterialQuantity(user, 13, 20070831);
 
         _users[0] = user;
+    }
+
+    private static void SetUserMaterialQuantity(GameUser user, int materialId, int quantity)
+    {
+        user.Data.userMaterials ??= [];
+        var materials = user.Data.userMaterials.ToList();
+        var material = materials.FirstOrDefault(m => m.materialId == materialId);
+        if (material == null)
+        {
+            material = new UserMaterial
+            {
+                materialId = materialId
+            };
+            materials.Add(material);
+        }
+
+        material.quantity = quantity;
+        user.Data.userMaterials = materials.OrderBy(m => m.materialId).ToArray();
     }
 
     public GameUser GetUser(long userId)

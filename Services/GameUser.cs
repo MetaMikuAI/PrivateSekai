@@ -29,6 +29,11 @@ public class GameUser
             );
 
     private const long TemplatePlaceholderTimestamp = 1188486000000L; // 2007-08-30T15:00:00Z
+    private static readonly Dictionary<int, int[]> FixedShopActionSetsByArea = new()
+    {
+        [3] = [4, 384, 2002, 2005],
+        [4] = [3, 838, 2001, 2006]
+    };
 
     public GameUser(SuiteUser data)
     {
@@ -104,6 +109,7 @@ public class GameUser
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         Data.now = now;
         NormalizeUserEventBreakTime(now);
+        EnsureShopAreaActionSets();
 
         // MessagePack 序列化往返实现深拷贝
         var bytes = MessagePackSerializer.Serialize(Data);
@@ -213,6 +219,46 @@ public class GameUser
             Data.refreshableTypes.Add(rtype);
     }
 
+    public void RefreshAreaActionSets()
+    {
+        EnsureShopAreaActionSets();
+        UpdateRefreshableTypes("userAreas");
+    }
+
+    public void EnsureShopAreaActionSets()
+    {
+        if (Data.userAreas == null)
+            return;
+
+        foreach (var (areaId, actionSetIds) in FixedShopActionSetsByArea)
+        {
+            var area = Data.userAreas.FirstOrDefault(a => a.areaId == areaId);
+            if (area == null)
+                continue;
+
+            area.userAreaStatus ??= new UserAreaStatus
+            {
+                areaId = areaId
+            };
+            area.userAreaStatus.status = UserAreaStatus.AREA_STATUS_RELEASED;
+
+            var actionSets = (area.actionSets ?? []).ToList();
+            foreach (var actionSetId in actionSetIds)
+            {
+                if (actionSets.Any(a => a.id == actionSetId))
+                    continue;
+
+                actionSets.Add(new UserActionSet
+                {
+                    id = actionSetId,
+                    status = UserActionSet.ACTION_SET_STATUS_UNREAD
+                });
+            }
+
+            area.actionSets = actionSets.ToArray();
+        }
+    }
+
     private static readonly Dictionary<string, int[]> TutorialCardsByUnit = new()
     {
         ["light_sound_opening"]     = [1, 5, 9, 13, 81, 82, 89, 93, 97, 98, 101, 105],
@@ -259,6 +305,8 @@ public class GameUser
     private static JsonArray? _boostsCache;
     private static JsonArray? _musicAchievementsCache;
     private static JsonArray? _resourceBoxesCache;
+    private static JsonArray? _shopItemsCache;
+    private static JsonArray? _musicVocalsCache;
     private static JsonArray? _liveMissionPassesCache;
     private static JsonArray? _playLevelScoresCache;
 
@@ -310,6 +358,26 @@ public class GameUser
         var json = File.ReadAllText(path);
         _resourceBoxesCache = JsonNode.Parse(json)!.AsArray();
         return _resourceBoxesCache;
+    }
+
+    private static JsonArray LoadShopItems()
+    {
+        if (_shopItemsCache != null) return _shopItemsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "shopItems.json");
+        var json = File.ReadAllText(path);
+        _shopItemsCache = JsonNode.Parse(json)!.AsArray();
+        return _shopItemsCache;
+    }
+
+    private static JsonArray LoadMusicVocals()
+    {
+        if (_musicVocalsCache != null) return _musicVocalsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicVocals.json");
+        var json = File.ReadAllText(path);
+        _musicVocalsCache = JsonNode.Parse(json)!.AsArray();
+        return _musicVocalsCache;
     }
 
     private static JsonArray LoadLiveMissionPasses()
@@ -705,6 +773,234 @@ public class GameUser
         });
         Data.userCustomProfiles = profiles.ToArray();
         UpdateRefreshableTypes("userCustomProfiles");
+    }
+
+    // ===================== Shop Mixin =====================
+
+    public void PurchaseShopItem(int shopId, int shopItemId)
+    {
+        var shopItem = FindShopItem(shopId, shopItemId);
+        var wasSoldOut = IsShopItemSoldOut(shopId, shopItemId);
+
+        MarkShopItemSoldOut(shopId, shopItemId);
+
+        if (!wasSoldOut && shopItem?["costs"] is JsonArray costs)
+            ConsumeShopItemCosts(costs);
+
+        var resourceBoxId = shopItem?["resourceBoxId"]?.GetValue<int>() ?? shopItemId;
+        ApplyShopItemResources(resourceBoxId);
+    }
+
+    private static JsonObject? FindShopItem(int shopId, int shopItemId)
+    {
+        foreach (var item in LoadShopItems())
+        {
+            if (item is JsonObject obj &&
+                obj["id"]?.GetValue<int>() == shopItemId &&
+                obj["shopId"]?.GetValue<int>() == shopId)
+            {
+                return obj;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsShopItemSoldOut(int shopId, int shopItemId) =>
+        Data.userShops?
+            .FirstOrDefault(s => s.shopId == shopId)?
+            .userShopItems?
+            .Any(i => i.shopItemId == shopItemId &&
+                      string.Equals(i.status, UserShopItem.STATUS_SOLD_OUT, StringComparison.Ordinal)) == true;
+
+    private void MarkShopItemSoldOut(int shopId, int shopItemId)
+    {
+        Data.userShops ??= [];
+        var shops = Data.userShops.ToList();
+        var shop = shops.FirstOrDefault(s => s.shopId == shopId);
+        if (shop == null)
+        {
+            shop = new UserShop
+            {
+                shopId = shopId,
+                userShopItems = []
+            };
+            shops.Add(shop);
+            Data.userShops = shops.ToArray();
+        }
+
+        var items = (shop.userShopItems ?? []).ToList();
+        var item = items.FirstOrDefault(i => i.shopItemId == shopItemId);
+        if (item == null)
+        {
+            item = new UserShopItem
+            {
+                shopItemId = shopItemId
+            };
+            items.Add(item);
+        }
+
+        item.status = UserShopItem.STATUS_SOLD_OUT;
+        shop.userShopItems = items.ToArray();
+        UpdateRefreshableTypes("userShops");
+    }
+
+    private void ConsumeShopItemCosts(JsonArray costs)
+    {
+        foreach (var entry in costs)
+        {
+            if (entry is not JsonObject costEntry ||
+                costEntry["cost"] is not JsonObject cost)
+                continue;
+
+            var resourceType = cost["resourceType"]?.GetValue<string>();
+            var resourceId = cost["resourceId"]?.GetValue<int>() ?? 0;
+            var quantity = cost["quantity"]?.GetValue<int>() ?? 0;
+            if (quantity <= 0)
+                continue;
+
+            switch (resourceType)
+            {
+                case "material":
+                    ConsumeMaterial(resourceId, quantity);
+                    break;
+                case "coin":
+                    if (Data.userGamedata != null)
+                    {
+                        Data.userGamedata.coin = Math.Max(0, Data.userGamedata.coin - quantity);
+                        UpdateRefreshableTypes("userGamedata");
+                    }
+                    break;
+                case "jewel":
+                    ConsumeJewel(quantity);
+                    break;
+            }
+        }
+    }
+
+    private void ConsumeMaterial(int materialId, int quantity)
+    {
+        if (materialId <= 0 || quantity <= 0)
+            return;
+
+        Data.userMaterials ??= [];
+        var materials = Data.userMaterials.ToList();
+        var material = materials.FirstOrDefault(m => m.materialId == materialId);
+        if (material == null)
+        {
+            material = new UserMaterial
+            {
+                materialId = materialId
+            };
+            materials.Add(material);
+        }
+
+        material.quantity = Math.Max(0, material.quantity - quantity);
+        Data.userMaterials = materials.OrderBy(m => m.materialId).ToArray();
+        UpdateRefreshableTypes("userMaterials");
+    }
+
+    private void ConsumeJewel(int quantity)
+    {
+        if (quantity <= 0)
+            return;
+
+        Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
+
+        var freeCost = Math.Min(Data.userChargedCurrency.free, quantity);
+        Data.userChargedCurrency.free -= freeCost;
+
+        var remainingCost = quantity - freeCost;
+        if (remainingCost > 0)
+            Data.userChargedCurrency.paid = Math.Max(0, Data.userChargedCurrency.paid - remainingCost);
+
+        UpdateRefreshableTypes("userChargedCurrency");
+    }
+
+    private void ApplyShopItemResources(int resourceBoxId)
+    {
+        foreach (var resource in BuildResourcesFromBox("shop_item", resourceBoxId))
+        {
+            if (resource.quantity <= 0)
+                continue;
+
+            switch (resource.resourceType)
+            {
+                case "music":
+                    GrantMusic(resource.resourceId);
+                    GrantDefaultMusicVocals(resource.resourceId);
+                    break;
+                case "music_vocal":
+                    GrantMusicVocal(resource.resourceId);
+                    break;
+                default:
+                    ApplyLiveRewards([resource]);
+                    break;
+            }
+        }
+    }
+
+    private void GrantMusic(int musicId)
+    {
+        if (musicId <= 0)
+            return;
+
+        Data.userMusics ??= [];
+        var musics = Data.userMusics.ToList();
+        if (musics.Any(m => m.musicId == musicId))
+            return;
+
+        musics.Add(new UserMusic { musicId = musicId });
+        Data.userMusics = musics.OrderBy(m => m.musicId).ToArray();
+        UpdateRefreshableTypes("userMusics");
+    }
+
+    private void GrantDefaultMusicVocals(int musicId)
+    {
+        foreach (var vocal in LoadMusicVocals())
+        {
+            if (vocal is not JsonObject obj ||
+                obj["musicId"]?.GetValue<int>() != musicId ||
+                obj["releaseConditionId"]?.GetValue<int>() != 5)
+                continue;
+
+            GrantMusicVocal(musicId, obj["id"]?.GetValue<int>() ?? 0);
+        }
+    }
+
+    private void GrantMusicVocal(int musicVocalId)
+    {
+        if (musicVocalId <= 0)
+            return;
+
+        foreach (var vocal in LoadMusicVocals())
+        {
+            if (vocal is JsonObject obj && obj["id"]?.GetValue<int>() == musicVocalId)
+            {
+                GrantMusicVocal(obj["musicId"]?.GetValue<int>() ?? 0, musicVocalId);
+                return;
+            }
+        }
+    }
+
+    private void GrantMusicVocal(int musicId, int musicVocalId)
+    {
+        if (musicId <= 0 || musicVocalId <= 0)
+            return;
+
+        Data.userMusicVocals ??= [];
+        if (Data.userMusicVocals.Any(v => v.musicVocalId == musicVocalId))
+            return;
+
+        Data.userMusicVocals.Add(new UserMusicVocal
+        {
+            musicId = musicId,
+            musicVocalId = musicVocalId
+        });
+        Data.userMusicVocals = Data.userMusicVocals
+            .OrderBy(v => v.musicVocalId)
+            .ToList();
+        UpdateRefreshableTypes("userMusicVocals");
     }
 
     // ===================== Live Mixin =====================

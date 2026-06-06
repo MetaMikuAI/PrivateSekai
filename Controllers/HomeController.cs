@@ -21,9 +21,15 @@ public class HomeController : PrskController
     /// PUT /api/user/{userId}/home/refresh
     /// </summary>
     [HttpPut("api/user/{userId}/home/refresh")]
-    public IActionResult HandleUserHomeRefresh(long userId)
+    public async Task<IActionResult> HandleUserHomeRefresh(long userId)
     {
         var user = _users.GetUser(userId);
+
+        var body = await ReadBodyAsync();
+        var requestData = TryDecodeHomeRefreshRequest(body);
+        if (requestData?.refreshableTypes?.Contains("lottery_action_set") == true)
+            user.RefreshAreaActionSets();
+
         user.UpdateRefreshableTypes("userFriends");
 
         var responseData = new SuiteUserCommonResponse
@@ -31,6 +37,22 @@ public class HomeController : PrskController
             updatedResources = user.GetRefreshData()
         };
         return PrskResponse(responseData);
+    }
+
+    private HomeRefreshRequest? TryDecodeHomeRefreshRequest(byte[]? body)
+    {
+        if (body == null)
+            return null;
+
+        try
+        {
+            return PrskCrypto.PrskDec<HomeRefreshRequest>(body);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to decode home refresh request; continuing with default refresh");
+            return null;
+        }
     }
 
     /// <summary>

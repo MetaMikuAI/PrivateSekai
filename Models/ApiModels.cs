@@ -70,6 +70,12 @@ public class UserAPIResponse
 // ===================== Home =====================
 
 [MessagePackObject]
+public class HomeRefreshRequest
+{
+    [Key("refreshableTypes")] public string[]? refreshableTypes;
+}
+
+[MessagePackObject]
 public class InformationResponse
 {
     [Key("informations")] public UserNews[]? informations;
