@@ -309,6 +309,10 @@ public class GameUser
     private static JsonArray? _musicVocalsCache;
     private static JsonArray? _liveMissionPassesCache;
     private static JsonArray? _playLevelScoresCache;
+    private static JsonArray? _gachasCache;
+    private static JsonArray? _cardsCache;
+    private static JsonArray? _cardCostume3dsCache;
+    private static JsonArray? _gachaCeilItemsCache;
 
     private static JsonArray LoadCardEpisodes()
     {
@@ -400,6 +404,46 @@ public class GameUser
         return _playLevelScoresCache;
     }
 
+    private static JsonArray LoadGachas()
+    {
+        if (_gachasCache != null) return _gachasCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachas.json");
+        var json = File.ReadAllText(path);
+        _gachasCache = JsonNode.Parse(json)!.AsArray();
+        return _gachasCache;
+    }
+
+    private static JsonArray LoadCards()
+    {
+        if (_cardsCache != null) return _cardsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "cards.json");
+        var json = File.ReadAllText(path);
+        _cardsCache = JsonNode.Parse(json)!.AsArray();
+        return _cardsCache;
+    }
+
+    private static JsonArray LoadCardCostume3ds()
+    {
+        if (_cardCostume3dsCache != null) return _cardCostume3dsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "cardCostume3ds.json");
+        var json = File.ReadAllText(path);
+        _cardCostume3dsCache = JsonNode.Parse(json)!.AsArray();
+        return _cardCostume3dsCache;
+    }
+
+    private static JsonArray LoadGachaCeilItems()
+    {
+        if (_gachaCeilItemsCache != null) return _gachaCeilItemsCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachaCeilItems.json");
+        var json = File.ReadAllText(path);
+        _gachaCeilItemsCache = JsonNode.Parse(json)!.AsArray();
+        return _gachaCeilItemsCache;
+    }
+
     private static List<int> GetCardEpisodeIds(int cardId)
     {
         var episodes = LoadCardEpisodes();
@@ -459,6 +503,508 @@ public class GameUser
 
         UpdateRefreshableTypes("userCards");
         return newCard;
+    }
+
+    // ===================== Gacha Mixin =====================
+
+    public UserGachaResponse ExecuteGacha(int gachaId, int gachaBehaviorId, bool isPriorityUsePaidJewel)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var gacha = FindGacha(gachaId);
+        var behavior = FindGachaBehavior(gacha, gachaBehaviorId);
+        var spinCount = GetGachaSpinCount(behavior, gachaBehaviorId);
+        var behaviorType = behavior?["gachaBehaviorType"]?.GetValue<string>();
+
+        var consumedCosts = ConsumeGachaCost(behavior, spinCount, isPriorityUsePaidJewel);
+
+        var drawnCardIds = DrawGachaCards(gacha, behaviorType, spinCount);
+        var obtainPrizes = new List<UserGachaSpinObtainPrize>();
+        foreach (var cardId in drawnCardIds)
+        {
+            var isNew = GrantGachaCard(cardId);
+            var costume3ds = isNew ? GrantInitialCostumes(cardId, now) : [];
+            obtainPrizes.Add(new UserGachaSpinObtainPrize
+            {
+                card = new UserResource
+                {
+                    resourceId = cardId,
+                    resourceType = "card",
+                    resourceLevel = 1,
+                    quantity = 1
+                },
+                newFlg = isNew,
+                gachaLotteryType = "normal",
+                costume3d = costume3ds,
+                cardExtra = []
+            });
+        }
+
+        var userGacha = UpsertUserGacha(gachaId, gachaBehaviorId, now);
+        var obtainGachaCeilItems = GrantGachaCeilItem(gacha, gachaId, spinCount);
+
+        UpdateRefreshableTypes("userCharacterMissionV2s");
+        UpdateRefreshableTypes("userCharacterMissionV2Statuses");
+        UpdateRefreshableTypes("userHonorMissions");
+
+        return new UserGachaResponse
+        {
+            consumedCosts = consumedCosts,
+            obtainPrizes = obtainPrizes.ToArray(),
+            obtainGachaCeilItems = obtainGachaCeilItems,
+            obtainGachaBonusItems = [],
+            obtainGachaExtras = [],
+            obtainGachaFreebies = [],
+            userGacha = userGacha,
+            updatedResources = GetRefreshData(),
+            obtainCharacterAllBonuses = [],
+            obtainCharacterRepeatedBonuses = []
+        };
+    }
+
+    private static JsonObject? FindGacha(int gachaId)
+    {
+        foreach (var gacha in LoadGachas())
+        {
+            if (gacha is JsonObject obj && obj["id"]?.GetValue<int>() == gachaId)
+                return obj;
+        }
+
+        return null;
+    }
+
+    private static JsonObject? FindGachaBehavior(JsonObject? gacha, int gachaBehaviorId)
+    {
+        if (gacha?["gachaBehaviors"] is not JsonArray behaviors)
+            return null;
+
+        foreach (var behavior in behaviors)
+        {
+            if (behavior is JsonObject obj && obj["id"]?.GetValue<int>() == gachaBehaviorId)
+                return obj;
+        }
+
+        return null;
+    }
+
+    private static int GetGachaSpinCount(JsonObject? behavior, int gachaBehaviorId)
+    {
+        var spinCount = behavior?["spinCount"]?.GetValue<int>() ?? 0;
+        if (spinCount > 0)
+            return spinCount;
+
+        return 1;
+    }
+
+    private UserResource[] ConsumeGachaCost(JsonObject? behavior, int spinCount, bool isPriorityUsePaidJewel)
+    {
+        var resourceCategory = behavior?["resourceCategory"]?.GetValue<string>();
+        if (string.Equals(resourceCategory, "free_resource", StringComparison.Ordinal))
+            return [];
+
+        var costResourceType = behavior?["costResourceType"]?.GetValue<string>();
+        var costResourceId = behavior?["costResourceId"]?.GetValue<int>() ?? 0;
+        var costQuantity = behavior?["costResourceQuantity"]?.GetValue<int>() ?? 300 * spinCount;
+        if (costQuantity <= 0 || string.IsNullOrEmpty(costResourceType))
+            return [];
+
+        return costResourceType switch
+        {
+            "jewel" =>
+            [
+                new UserResource
+                {
+                    resourceType = "jewel",
+                    resourceLevel = 0,
+                    quantity = ConsumeJewelForGacha(costQuantity, isPriorityUsePaidJewel)
+                }
+            ],
+            "paid_jewel" =>
+            [
+                new UserResource
+                {
+                    resourceType = "paid_jewel",
+                    resourceLevel = 0,
+                    quantity = ConsumePaidJewelForGacha(costQuantity)
+                }
+            ],
+            "gacha_ticket" =>
+            [
+                new UserResource
+                {
+                    resourceId = costResourceId,
+                    resourceType = "gacha_ticket",
+                    resourceLevel = 1,
+                    quantity = ConsumeGachaTicketForGacha(costResourceId, costQuantity)
+                }
+            ],
+            _ => []
+        };
+    }
+
+    private int ConsumeJewelForGacha(int quantity, bool isPriorityUsePaidJewel)
+    {
+        Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
+
+        if (isPriorityUsePaidJewel)
+        {
+            var paidCost = Math.Min(Math.Max(0, Data.userChargedCurrency.paid), quantity);
+            Data.userChargedCurrency.paid -= paidCost;
+            var remainingCost = quantity - paidCost;
+            if (remainingCost > 0)
+                Data.userChargedCurrency.free = Math.Max(0, Math.Max(0, Data.userChargedCurrency.free) - remainingCost);
+        }
+        else
+        {
+            var freeCost = Math.Min(Math.Max(0, Data.userChargedCurrency.free), quantity);
+            Data.userChargedCurrency.free -= freeCost;
+            var remainingCost = quantity - freeCost;
+            if (remainingCost > 0)
+                Data.userChargedCurrency.paid = Math.Max(0, Math.Max(0, Data.userChargedCurrency.paid) - remainingCost);
+        }
+
+        UpdateRefreshableTypes("userChargedCurrency");
+        return Math.Max(0, Data.userChargedCurrency.paid) + Math.Max(0, Data.userChargedCurrency.free);
+    }
+
+    private int ConsumePaidJewelForGacha(int quantity)
+    {
+        Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
+        Data.userChargedCurrency.paid = Math.Max(0, Math.Max(0, Data.userChargedCurrency.paid) - quantity);
+        UpdateRefreshableTypes("userChargedCurrency");
+        return Data.userChargedCurrency.paid;
+    }
+
+    private int ConsumeGachaTicketForGacha(int gachaTicketId, int quantity)
+    {
+        if (gachaTicketId <= 0 || quantity <= 0)
+            return 0;
+
+        Data.userGachaTickets ??= [];
+        var tickets = Data.userGachaTickets.ToList();
+        var ticket = tickets.FirstOrDefault(t => t.gachaTicketId == gachaTicketId);
+        if (ticket == null)
+        {
+            ticket = new UserGachaTicket
+            {
+                userId = GetUserId(),
+                gachaTicketId = gachaTicketId
+            };
+            tickets.Add(ticket);
+        }
+
+        ticket.quantity = Math.Max(0, ticket.quantity - quantity);
+        Data.userGachaTickets = tickets.OrderBy(t => t.gachaTicketId).ToArray();
+        UpdateRefreshableTypes("userGachaTickets");
+        return ticket.quantity;
+    }
+
+    private static int[] DrawGachaCards(JsonObject? gacha, string? behaviorType, int spinCount)
+    {
+        var cardIds = new int[spinCount];
+        for (var i = 0; i < cardIds.Length; i++)
+            cardIds[i] = DrawGachaCard(gacha);
+
+        if (cardIds.Length == 0)
+            return cardIds;
+
+        if (string.Equals(behaviorType, "over_rarity_4_once", StringComparison.Ordinal) &&
+            !cardIds.Any(IsRarity4OrHigher))
+        {
+            cardIds[^1] = DrawGachaCard(gacha, IsRarity4OrHigher);
+        }
+        else if (string.Equals(behaviorType, "over_rarity_3_once", StringComparison.Ordinal) &&
+                 !cardIds.Any(IsRarity3OrHigher))
+        {
+            cardIds[^1] = DrawGachaCard(gacha, IsRarity3OrHigher);
+        }
+
+        return cardIds;
+    }
+
+    private static int DrawGachaCard(JsonObject? gacha, Func<int, bool>? cardFilter = null)
+    {
+        var rarityType = DrawGachaRarity(gacha, cardFilter);
+        return DrawGachaCardByRarity(gacha, rarityType, cardFilter);
+    }
+
+    private static string? DrawGachaRarity(JsonObject? gacha, Func<int, bool>? cardFilter)
+    {
+        if (gacha?["gachaCardRarityRates"] is not JsonArray rates)
+            return null;
+
+        var candidates = rates
+            .OfType<JsonObject>()
+            .Where(rate => rate["lotteryType"]?.GetValue<string>() == "normal")
+            .Select(rate => new
+            {
+                RarityType = rate["cardRarityType"]?.GetValue<string>(),
+                Rate = rate["rate"]?.GetValue<double>() ?? 0
+            })
+            .Where(rate => !string.IsNullOrEmpty(rate.RarityType) &&
+                           rate.Rate > 0 &&
+                           HasGachaCardInRarity(gacha, rate.RarityType!, cardFilter))
+            .ToArray();
+
+        var totalRate = candidates.Sum(rate => rate.Rate);
+        if (totalRate <= 0)
+            return null;
+
+        var selected = Random.Shared.NextDouble() * totalRate;
+        double running = 0;
+        foreach (var candidate in candidates)
+        {
+            running += candidate.Rate;
+            if (selected < running)
+                return candidate.RarityType;
+        }
+
+        return candidates[^1].RarityType;
+    }
+
+    private static bool HasGachaCardInRarity(JsonObject? gacha, string rarityType, Func<int, bool>? cardFilter)
+    {
+        if (gacha?["gachaDetails"] is not JsonArray details)
+            return false;
+
+        foreach (var detail in details)
+        {
+            if (detail is not JsonObject obj)
+                continue;
+
+            var cardId = obj["cardId"]?.GetValue<int>() ?? 0;
+            if (cardId <= 0 || cardFilter?.Invoke(cardId) == false)
+                continue;
+
+            if (string.Equals(GetCardRarityType(cardId), rarityType, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static int DrawGachaCardByRarity(JsonObject? gacha, string? rarityType, Func<int, bool>? cardFilter)
+    {
+        if (gacha?["gachaDetails"] is not JsonArray details)
+            return DrawFallbackCard(cardFilter);
+
+        var candidates = details
+            .OfType<JsonObject>()
+            .Select(detail => new
+            {
+                CardId = detail["cardId"]?.GetValue<int>() ?? 0,
+                Weight = detail["weight"]?.GetValue<int>() ?? 0
+            })
+            .Where(detail => detail.CardId > 0 && detail.Weight > 0)
+            .Where(detail => cardFilter?.Invoke(detail.CardId) != false)
+            .Where(detail => string.IsNullOrEmpty(rarityType) ||
+                             string.Equals(GetCardRarityType(detail.CardId), rarityType, StringComparison.Ordinal))
+            .ToArray();
+
+        if (candidates.Length == 0)
+            return DrawFallbackCard(cardFilter);
+
+        var totalWeight = candidates.Sum(detail => (long)detail.Weight);
+        if (totalWeight <= 0)
+            return DrawFallbackCard(cardFilter);
+
+        var selected = Random.Shared.NextInt64(totalWeight);
+        long running = 0;
+        foreach (var candidate in candidates)
+        {
+            running += candidate.Weight;
+            if (selected < running)
+                return candidate.CardId;
+        }
+
+        return DrawFallbackCard(cardFilter);
+    }
+
+    private static int DrawFallbackCard(Func<int, bool>? cardFilter)
+    {
+        var candidates = LoadCards()
+            .OfType<JsonObject>()
+            .Select(card => card["id"]?.GetValue<int>() ?? 0)
+            .Where(cardId => cardId > 0 && !string.Equals(GetCardRarityType(cardId), "rarity_1", StringComparison.Ordinal))
+            .Where(cardId => cardFilter?.Invoke(cardId) != false)
+            .ToArray();
+
+        return candidates.Length == 0 ? 1 : candidates[Random.Shared.Next(candidates.Length)];
+    }
+
+    private static bool IsRarity3OrHigher(int cardId) =>
+        RarityRank(GetCardRarityType(cardId)) >= 3;
+
+    private static bool IsRarity4OrHigher(int cardId) =>
+        RarityRank(GetCardRarityType(cardId)) >= 4;
+
+    private static int RarityRank(string? rarityType) =>
+        rarityType switch
+        {
+            "rarity_birthday" => 4,
+            "rarity_4" => 4,
+            "rarity_3" => 3,
+            "rarity_2" => 2,
+            "rarity_1" => 1,
+            _ => 0
+        };
+
+    private static string? GetCardRarityType(int cardId) =>
+        FindCard(cardId)?["cardRarityType"]?.GetValue<string>();
+
+    private static JsonObject? FindCard(int cardId)
+    {
+        foreach (var card in LoadCards())
+        {
+            if (card is JsonObject obj && obj["id"]?.GetValue<int>() == cardId)
+                return obj;
+        }
+
+        return null;
+    }
+
+    private bool GrantGachaCard(int cardId)
+    {
+        Data.userCards ??= [];
+        var existing = Data.userCards.FirstOrDefault(c => c.cardId == cardId);
+        if (existing == null)
+        {
+            AddCard(cardId);
+            return true;
+        }
+
+        existing.duplicateCount++;
+        UpdateRefreshableTypes("userCards");
+        return false;
+    }
+
+    private UserResource[] GrantInitialCostumes(int cardId, long now)
+    {
+        var costumeIds = FindCardCostume3dIds(cardId);
+        if (costumeIds.Length == 0)
+            return [];
+
+        Data.userCostume3dStatuses ??= [];
+        var statuses = Data.userCostume3dStatuses.ToList();
+        var obtained = new List<UserResource>();
+        foreach (var costumeId in costumeIds)
+        {
+            if (statuses.Any(s => s.costume3dId == costumeId))
+                continue;
+
+            statuses.Add(new UserCostume3DStatus
+            {
+                costume3dId = costumeId,
+                obtainedAt = now,
+                status = "available"
+            });
+            obtained.Add(new UserResource
+            {
+                resourceId = costumeId,
+                resourceType = "costume_3d",
+                resourceLevel = 0,
+                quantity = 1
+            });
+        }
+
+        if (obtained.Count == 0)
+            return [];
+
+        Data.userCostume3dStatuses = statuses.OrderBy(s => s.costume3dId).ToArray();
+        UpdateRefreshableTypes("userCostume3dStatuses");
+        UpdateRefreshableTypes("userCostume3dShopItems");
+        return obtained.ToArray();
+    }
+
+    private static int[] FindCardCostume3dIds(int cardId)
+    {
+        var result = new List<int>();
+        foreach (var costume in LoadCardCostume3ds())
+        {
+            if (costume is JsonObject obj && obj["cardId"]?.GetValue<int>() == cardId)
+            {
+                var costumeId = obj["costume3dId"]?.GetValue<int>() ?? 0;
+                if (costumeId > 0)
+                    result.Add(costumeId);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    private UserGacha UpsertUserGacha(int gachaId, int gachaBehaviorId, long now)
+    {
+        Data.userGachas ??= [];
+        var gachas = Data.userGachas.ToList();
+        var userGacha = gachas.FirstOrDefault(g =>
+            g.gachaId == gachaId &&
+            g.gachaBehaviorId == gachaBehaviorId);
+
+        if (userGacha == null)
+        {
+            userGacha = new UserGacha
+            {
+                userId = GetUserId(),
+                gachaId = gachaId,
+                gachaBehaviorId = gachaBehaviorId
+            };
+            gachas.Add(userGacha);
+        }
+
+        userGacha.count++;
+        userGacha.lastSpinAt = now;
+        Data.userGachas = gachas.ToArray();
+        UpdateRefreshableTypes("userGachas");
+        return userGacha;
+    }
+
+    private UserResource[] GrantGachaCeilItem(JsonObject? gacha, int gachaId, int quantity)
+    {
+        var ceilItemId = ResolveGachaCeilItemId(gacha, gachaId);
+        if (ceilItemId <= 0 || quantity <= 0)
+            return [];
+
+        Data.userGachaCeilItems ??= [];
+        var ceilItems = Data.userGachaCeilItems.ToList();
+        var item = ceilItems.FirstOrDefault(i => i.gachaCeilItemId == ceilItemId);
+        if (item == null)
+        {
+            item = new UserGachaCeilItem
+            {
+                userId = GetUserId(),
+                gachaCeilItemId = ceilItemId
+            };
+            ceilItems.Add(item);
+        }
+
+        item.quantity += quantity;
+        Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
+        UpdateRefreshableTypes("userGachaCeilItems");
+
+        return
+        [
+            new UserResource
+            {
+                resourceId = ceilItemId,
+                resourceType = "gacha_ceil_item",
+                resourceLevel = 0,
+                quantity = quantity
+            }
+        ];
+    }
+
+    private static int ResolveGachaCeilItemId(JsonObject? gacha, int gachaId)
+    {
+        var fromGacha = gacha?["gachaCeilItemId"]?.GetValue<int>() ?? 0;
+        if (fromGacha > 0)
+            return fromGacha;
+
+        foreach (var item in LoadGachaCeilItems())
+        {
+            if (item is JsonObject obj && obj["gachaId"]?.GetValue<int>() == gachaId)
+                return obj["id"]?.GetValue<int>() ?? 0;
+        }
+
+        return 0;
     }
 
     // ===================== Inherit Mixin =====================

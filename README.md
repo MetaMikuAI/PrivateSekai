@@ -70,7 +70,7 @@
 | suitemasterfile | ✓ | ✓ | 如果遇到游戏更新需要手动更新该文件 |
 | 会话鉴权 | - | - | 不影响使用，暂不考虑完成                             |
 | Special Story 阅读 | ✓ | ✓ |                                                      |
-| Gacha |  |  |                                                      |
+| Gacha | ✓ | ✓ | vibe，AI 太依赖用 json 读表了，可能需要优化一下 |
 | Presents 邮箱 | ✓ | × | 仅实现"领取"动作而不会实际领取，可能要在后期补充完全 |
 | Solo Live | ✓ | ✓ | 大量 vibe，需严格校对 |
 | CD Shop | ✓ | ✓ |                                                      |
