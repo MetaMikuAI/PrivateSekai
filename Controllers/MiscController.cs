@@ -31,6 +31,27 @@ public class MiscController : PrskController
     }
 
     /// <summary>
+    /// PUT /api/user/{userId}/appeal
+    /// </summary>
+    [HttpPut("api/user/{userId}/appeal")]
+    public async Task<IActionResult> HandleAppeal(long userId)
+    {
+        var body = await ReadBodyAsync();
+        if (body == null) return BadRequest("Empty body");
+
+        var requestData = PrskCrypto.PrskDec<UserAppealRequest>(body);
+        if (requestData == null) return BadRequest("Failed to decrypt");
+
+        var user = _users.GetUser(userId);
+        user.MarkAppealsViewed(requestData.appealIds);
+
+        return PrskResponse(new SuiteUserCommonResponse
+        {
+            updatedResources = user.GetRefreshData()
+        });
+    }
+
+    /// <summary>
     /// POST /api/user/{userId}/{uuid} — 通用 stub，返回 200
     /// </summary>
     [HttpPost("api/user/{userId}/{uuid}")]

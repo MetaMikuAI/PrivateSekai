@@ -25,6 +25,49 @@ public class UserGachaResponse
 }
 
 [MessagePackObject]
+public class UserGachaCeilExchangeRequest
+{
+    [Key("gachaCeilExchangeIds")] public int[]? gachaCeilExchangeIds;
+    [Key("gachaCeilExchangeRequest")] public UserGachaCeilItemExchangeRequest? gachaCeilExchangeRequest;
+}
+
+[MessagePackObject]
+public class UserGachaCeilItemExchangeRequest
+{
+    [Key("gachaExchangeId")] public int gachaExchangeId;
+    [Key("exchangeCount")] public int exchangeCount;
+    [Key("gachaCeilExchangeSubstituteCostId")] public int gachaCeilExchangeSubstituteCostId;
+    [Key("substituteCostCount")] public int substituteCostCount;
+}
+
+[MessagePackObject]
+public class UserGachaCeilExchangeResponse
+{
+    [Key("obtainUserResources")] public UserResource[]? obtainUserResources;
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+}
+
+[MessagePackObject]
+public class UserRateChoiceGachaWishRequest
+{
+    [Key("gachaId")] public int gachaId;
+    [Key("rateChoiceGachaDetails")] public List<RateChoiceGachaDetail>? rateChoiceGachaDetails;
+}
+
+[MessagePackObject]
+public class RateChoiceGachaDetail
+{
+    [Key("rateChoiceGachaWishId")] public int rateChoiceGachaWishId;
+    [Key("gachaDetailId")] public int gachaDetailId;
+}
+
+[MessagePackObject]
+public class UserRateChoiceGachaWishResponse
+{
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+}
+
+[MessagePackObject]
 public class UserGachaSpinObtainPrize
 {
     [Key("card")] public UserResource? card;

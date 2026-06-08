@@ -81,6 +81,14 @@ public class InformationResponse
     [Key("informations")] public UserNews[]? informations;
 }
 
+// ===================== Appeal =====================
+
+[MessagePackObject]
+public class UserAppealRequest
+{
+    [Key("appealIds")] public int[]? appealIds;
+}
+
 // ===================== Tutorial =====================
 
 [MessagePackObject]
@@ -141,6 +149,20 @@ public class UserPresentHistoriesResponse
 
 [MessagePackObject]
 public class TopicResponse
+{
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+}
+
+// ===================== Card Exchange =====================
+
+[MessagePackObject]
+public class UserCardExchangeRequest
+{
+    [Key("userCards")] public UserCard[]? userCards;
+}
+
+[MessagePackObject]
+public class UserCardExchangeResponse
 {
     [Key("updatedResources")] public SuiteUser? updatedResources;
 }

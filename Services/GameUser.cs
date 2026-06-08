@@ -219,6 +219,26 @@ public class GameUser
             Data.refreshableTypes.Add(rtype);
     }
 
+    // ===================== Appeal Mixin =====================
+
+    public void MarkAppealsViewed(int[]? appealIds)
+    {
+        if (appealIds == null || appealIds.Length == 0)
+            return;
+
+        var mergedIds = (Data.userViewableAppeal?.appealIds ?? [])
+            .Concat(appealIds.Where(id => id > 0))
+            .Distinct()
+            .OrderBy(id => id)
+            .ToArray();
+
+        Data.userViewableAppeal = new ViewableAppeal
+        {
+            appealIds = mergedIds
+        };
+        UpdateRefreshableTypes("userViewableAppeal");
+    }
+
     public void RefreshAreaActionSets()
     {
         EnsureShopAreaActionSets();
@@ -313,6 +333,7 @@ public class GameUser
     private static JsonArray? _cardsCache;
     private static JsonArray? _cardCostume3dsCache;
     private static JsonArray? _gachaCeilItemsCache;
+    private static JsonArray? _gachaCeilExchangeSummariesCache;
 
     private static JsonArray LoadCardEpisodes()
     {
@@ -444,6 +465,16 @@ public class GameUser
         return _gachaCeilItemsCache;
     }
 
+    private static JsonArray LoadGachaCeilExchangeSummaries()
+    {
+        if (_gachaCeilExchangeSummariesCache != null) return _gachaCeilExchangeSummariesCache;
+
+        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachaCeilExchangeSummaries.json");
+        var json = File.ReadAllText(path);
+        _gachaCeilExchangeSummariesCache = JsonNode.Parse(json)!.AsArray();
+        return _gachaCeilExchangeSummariesCache;
+    }
+
     private static List<int> GetCardEpisodeIds(int cardId)
     {
         var episodes = LoadCardEpisodes();
@@ -558,6 +589,73 @@ public class GameUser
             updatedResources = GetRefreshData(),
             obtainCharacterAllBonuses = [],
             obtainCharacterRepeatedBonuses = []
+        };
+    }
+
+    public void SaveRateChoiceGachaWish(UserRateChoiceGachaWishRequest request)
+    {
+        if (request.rateChoiceGachaDetails == null)
+            return;
+
+        Data.userRateChoiceGachaWishes ??= [];
+        var wishes = Data.userRateChoiceGachaWishes
+            .Where(w => w.gachaId != request.gachaId)
+            .ToList();
+
+        wishes.AddRange(request.rateChoiceGachaDetails.Select(detail => new UserRateChoiceGachaWish
+        {
+            gachaId = request.gachaId,
+            gachaDetailId = detail.gachaDetailId,
+            rateChoiceGachaWishId = detail.rateChoiceGachaWishId
+        }));
+
+        Data.userRateChoiceGachaWishes = wishes
+            .OrderBy(w => w.gachaId)
+            .ThenBy(w => w.rateChoiceGachaWishId)
+            .ThenBy(w => w.gachaDetailId)
+            .ToArray();
+        UpdateRefreshableTypes("userRateChoiceGachaWishes");
+    }
+
+    public UserGachaCeilExchangeResponse ExchangeGachaCeilItem(UserGachaCeilExchangeRequest request)
+    {
+        var exchangeRequest = request.gachaCeilExchangeRequest;
+        if (exchangeRequest == null || exchangeRequest.gachaExchangeId <= 0 || exchangeRequest.exchangeCount <= 0)
+        {
+            return new UserGachaCeilExchangeResponse
+            {
+                obtainUserResources = [],
+                updatedResources = GetRefreshData()
+            };
+        }
+
+        var exchange = FindGachaCeilExchange(exchangeRequest.gachaExchangeId);
+        var resourceBoxId = exchange?["resourceBoxId"]?.GetValue<int>() ?? 0;
+        var obtainResources = BuildResourcesFromBox("gacha_ceil_exchange", resourceBoxId);
+
+        var exchangeCount = exchangeRequest.exchangeCount;
+        var cost = exchange?["gachaCeilExchangeCost"] as JsonObject;
+        ConsumeGachaCeilExchangeCost(cost, exchangeCount);
+        ConsumeGachaCeilSubstituteCost(exchange, exchangeRequest);
+
+        var exchangeId = exchangeRequest.gachaExchangeId;
+        var exchangeLimit = exchange?["exchangeLimit"]?.GetValue<int>() ?? 0;
+        UpsertUserGachaCeilExchange(exchangeId, exchangeLimit, exchangeCount);
+
+        var obtained = new Dictionary<(string? Type, int Id, int Level), UserResource>();
+        for (var i = 0; i < exchangeCount; i++)
+        {
+            foreach (var resource in obtainResources)
+            {
+                ApplyResource(resource);
+                AddObtainedResource(obtained, resource);
+            }
+        }
+
+        return new UserGachaCeilExchangeResponse
+        {
+            obtainUserResources = obtained.Values.ToArray(),
+            updatedResources = GetRefreshData()
         };
     }
 
@@ -915,6 +1013,27 @@ public class GameUser
         return obtained.ToArray();
     }
 
+    private void GrantCostume3d(int costume3dId)
+    {
+        if (costume3dId <= 0)
+            return;
+
+        Data.userCostume3dStatuses ??= [];
+        var statuses = Data.userCostume3dStatuses.ToList();
+        if (statuses.Any(s => s.costume3dId == costume3dId))
+            return;
+
+        statuses.Add(new UserCostume3DStatus
+        {
+            costume3dId = costume3dId,
+            obtainedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            status = "available"
+        });
+        Data.userCostume3dStatuses = statuses.OrderBy(s => s.costume3dId).ToArray();
+        UpdateRefreshableTypes("userCostume3dStatuses");
+        UpdateRefreshableTypes("userCostume3dShopItems");
+    }
+
     private static int[] FindCardCostume3dIds(int cardId)
     {
         var result = new List<int>();
@@ -992,6 +1111,29 @@ public class GameUser
         ];
     }
 
+    private void GrantGachaCeilItem(int gachaCeilItemId, int quantity)
+    {
+        if (gachaCeilItemId <= 0 || quantity <= 0)
+            return;
+
+        Data.userGachaCeilItems ??= [];
+        var ceilItems = Data.userGachaCeilItems.ToList();
+        var item = ceilItems.FirstOrDefault(i => i.gachaCeilItemId == gachaCeilItemId);
+        if (item == null)
+        {
+            item = new UserGachaCeilItem
+            {
+                userId = GetUserId(),
+                gachaCeilItemId = gachaCeilItemId
+            };
+            ceilItems.Add(item);
+        }
+
+        item.quantity += quantity;
+        Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
+        UpdateRefreshableTypes("userGachaCeilItems");
+    }
+
     private static int ResolveGachaCeilItemId(JsonObject? gacha, int gachaId)
     {
         var fromGacha = gacha?["gachaCeilItemId"]?.GetValue<int>() ?? 0;
@@ -1005,6 +1147,166 @@ public class GameUser
         }
 
         return 0;
+    }
+
+    private static JsonObject? FindGachaCeilExchange(int gachaCeilExchangeId)
+    {
+        foreach (var summary in LoadGachaCeilExchangeSummaries())
+        {
+            if (summary is not JsonObject summaryObj ||
+                summaryObj["gachaCeilExchanges"] is not JsonArray exchanges)
+                continue;
+
+            foreach (var exchange in exchanges)
+            {
+                if (exchange is JsonObject exchangeObj &&
+                    exchangeObj["id"]?.GetValue<int>() == gachaCeilExchangeId)
+                {
+                    return exchangeObj;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void ConsumeGachaCeilExchangeCost(JsonObject? cost, int exchangeCount)
+    {
+        if (cost == null || exchangeCount <= 0)
+            return;
+
+        var resourceType = cost["resourceType"]?.GetValue<string>();
+        var resourceId = cost["resourceId"]?.GetValue<int>() ?? cost["gachaCeilItemId"]?.GetValue<int>() ?? 0;
+        var quantity = (cost["quantity"]?.GetValue<int>() ?? 0) * exchangeCount;
+        ConsumeResource(resourceType, resourceId, quantity);
+    }
+
+    private void ConsumeGachaCeilSubstituteCost(JsonObject? exchange, UserGachaCeilItemExchangeRequest request)
+    {
+        if (exchange == null ||
+            request.gachaCeilExchangeSubstituteCostId <= 0 ||
+            request.substituteCostCount <= 0 ||
+            exchange["gachaCeilExchangeSubstituteCosts"] is not JsonArray costs)
+        {
+            return;
+        }
+
+        foreach (var entry in costs.OfType<JsonObject>())
+        {
+            if (entry["id"]?.GetValue<int>() != request.gachaCeilExchangeSubstituteCostId)
+                continue;
+
+            var resourceType = entry["resourceType"]?.GetValue<string>();
+            var resourceId = entry["resourceId"]?.GetValue<int>() ?? 0;
+            var quantity = (entry["substituteQuantity"]?.GetValue<int>() ?? 0) * request.substituteCostCount;
+            ConsumeResource(resourceType, resourceId, quantity);
+            UpsertUserGachaCeilExchangeSubstituteCost(request.gachaExchangeId, request.substituteCostCount);
+            return;
+        }
+    }
+
+    private void UpsertUserGachaCeilExchange(int gachaCeilExchangeId, int exchangeLimit, int exchangeCount)
+    {
+        Data.userGachaCeilExchanges ??= [];
+        var exchanges = Data.userGachaCeilExchanges.ToList();
+        var userExchange = exchanges.FirstOrDefault(e => e.gachaCeilExchangeId == gachaCeilExchangeId);
+        if (userExchange == null)
+        {
+            userExchange = new UserGachaCeilExchange
+            {
+                userId = GetUserId(),
+                gachaCeilExchangeId = gachaCeilExchangeId,
+                exchangeStatus = "exchangeable",
+                exchangeRemaining = exchangeLimit
+            };
+            exchanges.Add(userExchange);
+        }
+
+        if (exchangeLimit > 0)
+        {
+            userExchange.exchangeRemaining = Math.Max(0, userExchange.exchangeRemaining - exchangeCount);
+            userExchange.exchangeStatus = userExchange.exchangeRemaining == 0 ? "not_exchangeable" : "exchangeable";
+        }
+
+        Data.userGachaCeilExchanges = exchanges.OrderBy(e => e.gachaCeilExchangeId).ToArray();
+        UpdateRefreshableTypes("userGachaCeilExchanges");
+    }
+
+    private void UpsertUserGachaCeilExchangeSubstituteCost(int gachaCeilExchangeId, int usedCount)
+    {
+        Data.userGachaCeilExchangeSubstituteCosts ??= [];
+        var costs = Data.userGachaCeilExchangeSubstituteCosts.ToList();
+        var cost = costs.FirstOrDefault(c => c.gachaCeilExchangeId == gachaCeilExchangeId);
+        if (cost == null)
+        {
+            cost = new UserGachaCeilExchangeSubstituteCost
+            {
+                gachaCeilExchangeId = gachaCeilExchangeId
+            };
+            costs.Add(cost);
+        }
+
+        cost.substituteCostUsedCount += usedCount;
+        Data.userGachaCeilExchangeSubstituteCosts = costs.OrderBy(c => c.gachaCeilExchangeId).ToArray();
+        UpdateRefreshableTypes("userGachaCeilExchangeSubstituteCosts");
+    }
+
+    private void ConsumeGachaCeilItem(int gachaCeilItemId, int quantity)
+    {
+        if (gachaCeilItemId <= 0 || quantity <= 0)
+            return;
+
+        Data.userGachaCeilItems ??= [];
+        var ceilItems = Data.userGachaCeilItems.ToList();
+        var item = ceilItems.FirstOrDefault(i => i.gachaCeilItemId == gachaCeilItemId);
+        if (item == null)
+        {
+            item = new UserGachaCeilItem
+            {
+                userId = GetUserId(),
+                gachaCeilItemId = gachaCeilItemId
+            };
+            ceilItems.Add(item);
+        }
+
+        item.quantity = Math.Max(0, item.quantity - quantity);
+        Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
+        UpdateRefreshableTypes("userGachaCeilItems");
+    }
+
+    public void ExchangeCards(UserCard[]? userCards)
+    {
+        if (userCards == null || userCards.Length == 0)
+            return;
+
+        Data.userCards ??= [];
+        var cards = Data.userCards;
+        foreach (var requestCard in userCards.Where(c => c.cardId > 0))
+        {
+            var current = cards.FirstOrDefault(c => c.cardId == requestCard.cardId);
+            if (current == null)
+            {
+                requestCard.userId = GetUserId();
+                cards.Add(requestCard);
+                continue;
+            }
+
+            current.level = requestCard.level;
+            current.exp = requestCard.exp;
+            current.totalExp = requestCard.totalExp;
+            current.skillLevel = requestCard.skillLevel;
+            current.skillExp = requestCard.skillExp;
+            current.totalSkillExp = requestCard.totalSkillExp;
+            current.masterRank = requestCard.masterRank;
+            current.specialTrainingStatus = requestCard.specialTrainingStatus;
+            current.defaultImage = requestCard.defaultImage;
+            current.duplicateCount = requestCard.duplicateCount;
+            current.createdAt = requestCard.createdAt;
+            current.episodes = requestCard.episodes;
+        }
+
+        Data.userCards = cards.OrderBy(c => c.cardId).ToList();
+        UpdateRefreshableTypes("userCards");
     }
 
     // ===================== Inherit Mixin =====================
@@ -1461,6 +1763,88 @@ public class GameUser
             Data.userChargedCurrency.paid = Math.Max(0, Data.userChargedCurrency.paid - remainingCost);
 
         UpdateRefreshableTypes("userChargedCurrency");
+    }
+
+    private void ConsumeResource(string? resourceType, int resourceId, int quantity)
+    {
+        if (quantity <= 0)
+            return;
+
+        switch (resourceType)
+        {
+            case "material":
+                ConsumeMaterial(resourceId, quantity);
+                break;
+            case "coin":
+                if (Data.userGamedata != null)
+                {
+                    Data.userGamedata.coin = Math.Max(0, Data.userGamedata.coin - quantity);
+                    UpdateRefreshableTypes("userGamedata");
+                }
+                break;
+            case "jewel":
+                ConsumeJewel(quantity);
+                break;
+            case "paid_jewel":
+                ConsumePaidJewelForGacha(quantity);
+                break;
+            case "gacha_ceil_item":
+                ConsumeGachaCeilItem(resourceId, quantity);
+                break;
+            case "gacha_ticket":
+                ConsumeGachaTicketForGacha(resourceId, quantity);
+                break;
+        }
+    }
+
+    private void ApplyResource(UserResource resource)
+    {
+        if (resource.quantity <= 0)
+            return;
+
+        switch (resource.resourceType)
+        {
+            case "card":
+                for (var i = 0; i < resource.quantity; i++)
+                    GrantGachaCard(resource.resourceId);
+                break;
+            case "costume_3d":
+                GrantCostume3d(resource.resourceId);
+                break;
+            case "music":
+                GrantMusic(resource.resourceId);
+                GrantDefaultMusicVocals(resource.resourceId);
+                break;
+            case "music_vocal":
+                GrantMusicVocal(resource.resourceId);
+                break;
+            case "gacha_ceil_item":
+                GrantGachaCeilItem(resource.resourceId, resource.quantity);
+                break;
+            default:
+                ApplyLiveRewards([resource]);
+                break;
+        }
+    }
+
+    private static void AddObtainedResource(
+        IDictionary<(string? Type, int Id, int Level), UserResource> obtained,
+        UserResource resource)
+    {
+        var key = (resource.resourceType, resource.resourceId, resource.resourceLevel);
+        if (obtained.TryGetValue(key, out var current))
+        {
+            current.quantity += resource.quantity;
+            return;
+        }
+
+        obtained[key] = new UserResource
+        {
+            resourceType = resource.resourceType,
+            resourceId = resource.resourceId,
+            resourceLevel = resource.resourceLevel,
+            quantity = resource.quantity
+        };
     }
 
     private void ApplyShopItemResources(int resourceBoxId)
