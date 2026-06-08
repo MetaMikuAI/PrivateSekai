@@ -2,22 +2,22 @@
     "sessionToken": "***",
     "appVersion": "6.5.5",
     "multiPlayVersion": "kaito",
-    "dataVersion": "6.5.5.11",
-    "assetVersion": "6.5.5.10",
+    "dataVersion": "6.5.5.20",
+    "assetVersion": "6.5.5.20",
     "removeAssetVersion": "1.13.0.30",
-    "assetHash": "af422876-cc95-4d92-869b-c0166ca167da",
+    "assetHash": "df53dc06-d8a4-4e22-bc34-abce812df84c",
     "appVersionStatus": "available",
     "isStreamingVirtualLiveForceOpenUser": false,
-    "deviceId": "940348ec-3c87-46e3-a81c-894c904cc705",
+    "deviceId": "a360c6f6-c806-4658-a03f-87824717b2ea",
     "updatedResources": {},
     "suiteMasterSplitPath": [
-        "suitemasterfile/6.5.5.11/00_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/01_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/02_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/03_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/04_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/05_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8",
-        "suitemasterfile/6.5.5.11/06_18f79061eecd9fb76cc532a9651e69ec1bd056e7b3c7fc489f3e7c8ff6af84d8"
+        "suitemasterfile/6.5.5.20/00_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/01_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/02_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/03_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/04_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/05_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c",
+        "suitemasterfile/6.5.5.20/06_4c9023a58362ca1eea85214941d9f4dc249004bff5b3613e3c48337cca42844c"
     ],
     "obtainedBondsRewardIds": []
 }
