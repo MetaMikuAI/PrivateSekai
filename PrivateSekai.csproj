@@ -8,9 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="SekaiReverse/**" />
-    <Compile Remove="sekai-master-db-diff/**" />
-    <Compile Remove="docs/**" />
+    <Compile Remove="$(PrivateSekaiDevOnlyExcludes)" />
+    <Content Remove="$(PrivateSekaiDevOnlyExcludes)" />
+    <None Remove="$(PrivateSekaiDevOnlyExcludes)" />
+    <EmbeddedResource Remove="$(PrivateSekaiDevOnlyExcludes)" />
   </ItemGroup>
 
   <ItemGroup>
