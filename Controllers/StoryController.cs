@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class StoryController : PrskController
 {
     private readonly UserManager _users;
@@ -25,13 +23,12 @@ public class StoryController : PrskController
         user.ReadEpisode(episodeId);
         user.UpdateRefreshableTypes("userSpecialEpisodeStatuses");
 
-        var responseData = new UserStoryResponse
+        return Ok(new UserStoryResponse
         {
             updatedResources = user.GetRefreshData(
                 deleteRtypes: new HashSet<string> { "userBeginnerMissionBehavior" }),
             userObtainResourceResults = []
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
@@ -40,7 +37,7 @@ public class StoryController : PrskController
     [HttpGet("api/user/{userId}/story/recommend")]
     public IActionResult HandleStoryRecommend(long userId)
     {
-        var responseData = new UserStoryRecommendResponse
+        return Ok(new UserStoryRecommendResponse
         {
             userStoryRecommends =
             [
@@ -69,8 +66,7 @@ public class StoryController : PrskController
                     seq = 3
                 }
             ]
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
@@ -79,11 +75,10 @@ public class StoryController : PrskController
     [HttpGet("api/user/{userId}/story-favorite/friend/status/{storyType}")]
     public IActionResult HandleStoryFavoriteFriendStatus(long userId, string storyType)
     {
-        var responseData = new StoryFavoriteFriendStatusResponse
+        return Ok(new StoryFavoriteFriendStatusResponse
         {
             friendStoryFavoriteStatuses = []
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
@@ -92,11 +87,10 @@ public class StoryController : PrskController
     [HttpGet("api/user/{userId}/story-episode-bookmark/{storyType}/story/{storyId}")]
     public IActionResult HandleStoryEpisodeBookmark(long userId, string storyType, int storyId)
     {
-        var responseData = new StoryEpisodeBookmarkResponse
+        return Ok(new StoryEpisodeBookmarkResponse
         {
             userStoryEpisodeBookmarks = []
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
@@ -106,12 +100,11 @@ public class StoryController : PrskController
     public IActionResult HandleArchiveEventStoryEpisodeLog(long userId, int episodeId)
     {
         var user = _users.GetUser(userId);
-        var responseData = new UserStoryResponse
+        return Ok(new UserStoryResponse
         {
             updatedResources = user.GetRefreshData(
                 deleteRtypes: new HashSet<string> { "userBeginnerMissionBehavior" }),
             userObtainResourceResults = []
-        };
-        return PrskResponse(responseData);
+        });
     }
 }

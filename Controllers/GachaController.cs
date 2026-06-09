@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class GachaController : PrskController
 {
     private readonly UserManager _users;
@@ -21,7 +19,7 @@ public class GachaController : PrskController
     [HttpGet("api/module-maintenance/{kind}")]
     public IActionResult HandleModuleMaintenance(string kind)
     {
-        return PrskResponse(new ModuleMaintenanceResponse
+        return Ok(new ModuleMaintenanceResponse
         {
             moduleMaintenanceType = kind.ToLowerInvariant(),
             isOngoing = false
@@ -39,42 +37,29 @@ public class GachaController : PrskController
         [FromQuery] bool isPriorityUsePaidJewel = false)
     {
         var user = _users.GetUser(userId);
-        var responseData = user.ExecuteGacha(gachaId, gachaBehaviorId, isPriorityUsePaidJewel);
-        return PrskResponse(responseData);
+        return Ok(user.ExecuteGacha(gachaId, gachaBehaviorId, isPriorityUsePaidJewel));
     }
 
     /// <summary>
     /// PUT /api/user/{userId}/exchange/gacha-ceil-item
     /// </summary>
     [HttpPut("api/user/{userId:long}/exchange/gacha-ceil-item")]
-    public async Task<IActionResult> HandleGachaCeilItemExchange(long userId)
+    public IActionResult HandleGachaCeilItemExchange(long userId, [FromBody] UserGachaCeilExchangeRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserGachaCeilExchangeRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        return PrskResponse(user.ExchangeGachaCeilItem(requestData));
+        return Ok(user.ExchangeGachaCeilItem(request));
     }
 
     /// <summary>
     /// PUT /api/user/{userId}/rate-choice-gacha-wish
     /// </summary>
     [HttpPut("api/user/{userId:long}/rate-choice-gacha-wish")]
-    public async Task<IActionResult> HandleRateChoiceGachaWish(long userId)
+    public IActionResult HandleRateChoiceGachaWish(long userId, [FromBody] UserRateChoiceGachaWishRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserRateChoiceGachaWishRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        user.SaveRateChoiceGachaWish(requestData);
+        user.SaveRateChoiceGachaWish(request);
 
-        return PrskResponse(new UserRateChoiceGachaWishResponse
+        return Ok(new UserRateChoiceGachaWishResponse
         {
             updatedResources = user.GetRefreshData()
         });

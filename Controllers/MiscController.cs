@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class MiscController : PrskController
 {
     private readonly UserManager _users;
@@ -23,40 +21,31 @@ public class MiscController : PrskController
     {
         var user = _users.GetUser(userId);
         user.RemoveTopic(topicId);
-        var responseData = new TopicResponse
-        {
-            updatedResources = user.GetRefreshData()
-        };
-        return PrskResponse(responseData);
-    }
 
-    /// <summary>
-    /// PUT /api/user/{userId}/appeal
-    /// </summary>
-    [HttpPut("api/user/{userId}/appeal")]
-    public async Task<IActionResult> HandleAppeal(long userId)
-    {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserAppealRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var user = _users.GetUser(userId);
-        user.MarkAppealsViewed(requestData.appealIds);
-
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new TopicResponse
         {
             updatedResources = user.GetRefreshData()
         });
     }
 
     /// <summary>
-    /// POST /api/user/{userId}/{uuid} — 通用 stub，返回 200
+    /// PUT /api/user/{userId}/appeal
+    /// </summary>
+    [HttpPut("api/user/{userId}/appeal")]
+    public IActionResult HandleAppeal(long userId, [FromBody] UserAppealRequest request)
+    {
+        var user = _users.GetUser(userId);
+        user.MarkAppealsViewed(request.appealIds);
+
+        return Ok(new SuiteUserCommonResponse
+        {
+            updatedResources = user.GetRefreshData()
+        });
+    }
+
+    /// <summary>
+    /// POST /api/user/{userId}/{uuid}
     /// </summary>
     [HttpPost("api/user/{userId}/{uuid}")]
-    public IActionResult HandleUuidEndpoint(long userId, string uuid)
-    {
-        return Ok();
-    }
+    public IActionResult HandleUuidEndpoint(long userId, string uuid) => Ok();
 }

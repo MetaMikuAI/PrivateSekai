@@ -1,13 +1,11 @@
 using MessagePack;
 using Microsoft.AspNetCore.Mvc;
-
 using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class AuthController : PrskController
 {
     private readonly UserManager _users;
@@ -21,22 +19,14 @@ public class AuthController : PrskController
 
     /// <summary>
     /// PUT /api/user/{userId}/auth
-    /// 客户端通过 credential 换取 sessionToken
     /// </summary>
     [HttpPut("api/user/{userId}/auth")]
-    public async Task<IActionResult> HandleAuthUser(long userId)
+    public IActionResult HandleAuthUser(long userId, [FromBody] UserAuthRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserAuthRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var credential = requestData.credential;
-        if (string.IsNullOrEmpty(credential))
+        if (string.IsNullOrEmpty(request.credential))
             return BadRequest("Missing credential");
 
-        if (!JwtSignature.VerifyCredential(credential, userId))
+        if (!JwtSignature.VerifyCredential(request.credential, userId))
         {
             _logger.LogError("Invalid credential for user {UserId}", userId);
             return Unauthorized("Invalid credential");
@@ -49,11 +39,11 @@ public class AuthController : PrskController
         responseData.sessionToken = JwtSignature.GenSessionToken(userId);
         responseData.updatedResources = null;
 
-        return PrskResponse(responseData);
+        return Ok(responseData);
     }
 
     /// <summary>
-    /// GET /api/system 获取可用版本
+    /// GET /api/system
     /// </summary>
     [HttpGet("api/system")]
     public IActionResult HandleSystemInfo()
@@ -61,6 +51,6 @@ public class AuthController : PrskController
         var responseData = MessagePackSerializer.Deserialize<SystemResponse>(
             MessagePackSerializer.Serialize(_users.ApiSystem));
         responseData.serverDate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        return PrskResponse(responseData);
+        return Ok(responseData);
     }
 }

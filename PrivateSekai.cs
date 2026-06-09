@@ -1,4 +1,5 @@
 using PrivateSekai.Config;
+using PrivateSekai.Crypto;
 using PrivateSekai.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,7 +12,8 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddSingleton<UserManager>();
-builder.Services.AddControllers();
+builder.Services.AddControllers(options =>
+    options.InputFormatters.Insert(0, new PrskMessagePackInputFormatter()));
 
 var app = builder.Build();
 var appLogger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("PrivateSekai");
@@ -39,7 +41,8 @@ app.UseExceptionHandler(handler => handler.Run(async ctx =>
     });
 }));
 
-
+app.UseRouting();
+app.UseMiddleware<PrskCryptoMiddleware>();
 app.MapControllers();
 
 app.Services.GetRequiredService<UserManager>();

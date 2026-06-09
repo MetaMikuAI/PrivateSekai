@@ -4,7 +4,6 @@ using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class ShopController : PrskController
 {
     private readonly UserManager _users;
@@ -23,7 +22,7 @@ public class ShopController : PrskController
         var user = _users.GetUser(userId);
         user.PurchaseShopItem(shopId, shopItemId);
 
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
         });

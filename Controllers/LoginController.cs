@@ -5,7 +5,6 @@ using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class LoginController : PrskController
 {
     private readonly UserManager _users;
@@ -21,31 +20,24 @@ public class LoginController : PrskController
     /// POST /api/user — 注册新用户
     /// </summary>
     [HttpPost("api/user")]
-    public async Task<IActionResult> HandleRegisterUser()
+    public IActionResult HandleRegisterUser([FromBody] UserAuthRequest _)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-        
-        PrskCrypto.PrskDec<UserAuthRequest>(body);
-
         var newUserId = _users.ForkNewUser();
         var user = _users.GetUser(newUserId);
         _logger.LogInformation("New user registered: ID={UserId}", newUserId);
 
         var suiteData = user.GetSuiteUserData();
 
-        var responseData = new UserAPIResponse
+        return Ok(new UserAPIResponse
         {
             userRegistration = suiteData.userRegistration,
             credential = JwtSignature.GenUserCredential(newUserId),
             updatedResources = suiteData
-        };
-
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
-    /// GET /api/suite/user/{userId} 获取 suite
+    /// GET /api/suite/user/{userId}
     /// </summary>
     [HttpGet("api/suite/user/{userId}")]
     public IActionResult HandleSuiteUser(long userId)
@@ -54,8 +46,7 @@ public class LoginController : PrskController
             ? _users.GetUser(userId)
             : _users.GetUser(0);
 
-        var responseData = user.GetSuiteUserData();
-        return PrskResponse(responseData);
+        return Ok(user.GetSuiteUserData());
     }
 
     /// <summary>
@@ -68,7 +59,6 @@ public class LoginController : PrskController
             ? _users.GetUser(userId)
             : _users.GetUser(0);
 
-        var responseData = user.GetSuiteUserParts(names);
-        return PrskResponse(responseData);
+        return Ok(user.GetSuiteUserParts(names));
     }
 }

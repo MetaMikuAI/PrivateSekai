@@ -5,7 +5,6 @@ using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class InheritController : PrskController
 {
     private readonly UserManager _users;
@@ -23,44 +22,35 @@ public class InheritController : PrskController
     [HttpGet("api/user/{userId}/restrict-info")]
     public IActionResult HandleRestrictInfo(long userId)
     {
-        var responseData = new RestrictInfoResponse
+        return Ok(new RestrictInfoResponse
         {
             isRestrictDeviceTransfer = false
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
-    /// PUT /api/user/{userId}/inherit — 设置引继码
+    /// PUT /api/user/{userId}/inherit
     /// </summary>
     [HttpPut("api/user/{userId}/inherit")]
-    public async Task<IActionResult> HandleSetInherit(long userId)
+    public IActionResult HandleSetInherit(long userId, [FromBody] UserInheritRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserInheritRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var password = requestData.password;
-        if (string.IsNullOrEmpty(password))
+        if (string.IsNullOrEmpty(request.password))
             return BadRequest("Missing password");
 
         var user = _users.GetUser(userId);
-        var inheritId = user.SetUserInherit(password);
+        var inheritId = user.SetUserInherit(request.password);
 
         _logger.LogInformation("User {UserId} set inherit ID {InheritId}", userId, inheritId);
 
-        var responseData = new UserInheritSetResponse
+        return Ok(new UserInheritSetResponse
         {
             updatedResources = user.GetRefreshData(),
             userInherit = new UserInherit { inheritId = inheritId }
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
-    /// POST /api/inherit/user/{inheritId} — 执行账号引继
+    /// POST /api/inherit/user/{inheritId}
     /// </summary>
     [HttpPost("api/inherit/user/{inheritId}")]
     public IActionResult HandleInheritUser(string inheritId)
@@ -123,6 +113,6 @@ public class InheritController : PrskController
         if (isExecuteInherit == "True")
             responseData.credential = JwtSignature.GenUserCredential(matchedUserId.Value);
 
-        return PrskResponse(responseData);
+        return Ok(responseData);
     }
 }

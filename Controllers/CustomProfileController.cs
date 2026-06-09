@@ -5,7 +5,6 @@ using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class CustomProfileController : PrskController
 {
     private readonly UserManager _users;
@@ -21,18 +20,15 @@ public class CustomProfileController : PrskController
     /// PUT /api/user/{userId}/custom-profile/{customProfileId}
     /// </summary>
     [HttpPut("api/user/{userId}/custom-profile/{customProfileId}")]
-    public async Task<IActionResult> HandleSaveCustomProfile(long userId, int customProfileId)
+    public IActionResult HandleSaveCustomProfile(
+        long userId,
+        int customProfileId,
+        [FromBody] UserSaveCustomProfileRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserSaveCustomProfileRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        user.SaveCustomProfile(customProfileId, requestData.name, requestData.customProfileCardOrders);
+        user.SaveCustomProfile(customProfileId, request.name, request.customProfileCardOrders);
 
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
         });
@@ -42,21 +38,16 @@ public class CustomProfileController : PrskController
     /// POST /api/user/{userId}/custom-profile/{customProfileId}/custom-profile-card/{customProfileCardId}
     /// </summary>
     [HttpPost("api/user/{userId}/custom-profile/{customProfileId}/custom-profile-card/{customProfileCardId}")]
-    public async Task<IActionResult> HandleCreateCustomProfileCard(
+    public IActionResult HandleCreateCustomProfileCard(
         long userId,
         int customProfileId,
-        int customProfileCardId)
+        int customProfileCardId,
+        [FromBody] UserSaveCustomProfileCardRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserSaveCustomProfileCardRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        user.SaveCustomProfileCard(customProfileId, customProfileCardId, requestData);
+        user.SaveCustomProfileCard(customProfileId, customProfileCardId, request);
 
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
         });
@@ -66,21 +57,16 @@ public class CustomProfileController : PrskController
     /// PUT /api/user/{userId}/custom-profile/{customProfileId}/custom-profile-card/{customProfileCardId}
     /// </summary>
     [HttpPut("api/user/{userId}/custom-profile/{customProfileId}/custom-profile-card/{customProfileCardId}")]
-    public async Task<IActionResult> HandleUpdateCustomProfileCard(
+    public IActionResult HandleUpdateCustomProfileCard(
         long userId,
         int customProfileId,
-        int customProfileCardId)
+        int customProfileCardId,
+        [FromBody] UserSaveCustomProfileCardRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserSaveCustomProfileCardRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        user.SaveCustomProfileCard(customProfileId, customProfileCardId, requestData);
+        user.SaveCustomProfileCard(customProfileId, customProfileCardId, request);
 
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
         });
@@ -101,7 +87,7 @@ public class CustomProfileController : PrskController
         var user = _users.GetUser(userId);
         user.DeleteCustomProfileCards(customProfileId, customProfileCardId);
 
-        return PrskResponse(new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
         });
@@ -110,6 +96,7 @@ public class CustomProfileController : PrskController
     /// <summary>
     /// GET /image/custom-profile-card/thumbnail/{hash}/{thumbnailId}
     /// </summary>
+    [PrskPlaintextResponse]
     [HttpGet("image/custom-profile-card/thumbnail/{hash}/{thumbnailId}")]
     public IActionResult HandleCustomProfileThumbnail(string hash, string thumbnailId)
     {
@@ -123,18 +110,13 @@ public class CustomProfileController : PrskController
     /// POST /api/user/{userId}/report/{reportedUserId}/custom-profile/{customProfileId}
     /// </summary>
     [HttpPost("api/user/{userId}/report/{reportedUserId}/custom-profile/{customProfileId}")]
-    public async Task<IActionResult> HandleCustomProfileReport(
+    public IActionResult HandleCustomProfileReport(
         long userId,
         long reportedUserId,
-        int customProfileId)
+        int customProfileId,
+        [FromBody] PostCustomProfileCommunityReportRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<PostCustomProfileCommunityReportRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var reason = requestData.userReportReason;
+        var reason = request.userReportReason;
         _logger.LogInformation(
             "Custom profile report: reporter={ReporterUserId}, reported={ReportedUserId}, customProfileId={CustomProfileId}, reasonTypes={ReasonTypes}, location={Location}",
             userId,
@@ -143,6 +125,6 @@ public class CustomProfileController : PrskController
             reason?.userReportReasonTypes == null ? "" : string.Join(",", reason.userReportReasonTypes),
             reason?.userReportLocation ?? "");
 
-        return PrskResponse(new EmptyResponse());
+        return Ok(new EmptyResponse());
     }
 }

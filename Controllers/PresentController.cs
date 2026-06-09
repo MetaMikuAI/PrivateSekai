@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class PresentController : PrskController
 {
     private readonly UserManager _users;
@@ -22,33 +20,25 @@ public class PresentController : PrskController
     public IActionResult HandlePresentHistory(long userId)
     {
         var user = _users.GetUser(userId);
-        var responseData = new UserPresentHistoriesResponse
+        return Ok(new UserPresentHistoriesResponse
         {
             userPresentHistories = user.GetPresentHistory()
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
-    /// POST /api/user/{userId}/present — 领取礼物
+    /// POST /api/user/{userId}/present
     /// </summary>
     [HttpPost("api/user/{userId}/present")]
-    public async Task<IActionResult> HandleReceivePresent(long userId)
+    public IActionResult HandleReceivePresent(long userId, [FromBody] UserPresentRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserPresentRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
         var user = _users.GetUser(userId);
-        var received = user.ReceivePresent(requestData.presentIds ?? []);
+        var received = user.ReceivePresent(request.presentIds ?? []);
 
-        var responseData = new UserPresentReceiveResponse
+        return Ok(new UserPresentReceiveResponse
         {
             updatedResources = user.GetRefreshData(),
             receivedUserPresents = received
-        };
-        return PrskResponse(responseData);
+        });
     }
 }

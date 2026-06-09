@@ -44,13 +44,32 @@ public static class PrskCrypto
     }
 
     /// <summary>
-    /// T → JSON (skip null) → MessagePack bytes (Float32) → AES-CBC encrypt
-    /// 用于含 SuiteUser 等大量可空字段的响应，序列化时跳过 null
+    /// T → JSON (skip null) → MessagePack bytes (Float32)
     /// </summary>
-    public static byte[] PrskEncSkipNull<T>(T data)
+    public static byte[] SerializeSkipNull<T>(T data)
     {
         var json = JsonSerializer.Serialize(data, _skipNullOptions);
-        return PrskEncFromJson(json);
+        return ConvertJsonToMsgPackSingleFloat(json);
+    }
+
+    /// <summary>
+    /// T → JSON (skip null) → MessagePack bytes (Float32) → AES-CBC encrypt
+    /// </summary>
+    public static byte[] PrskEncSkipNull<T>(T data) =>
+        EncryptAesCbc(SerializeSkipNull(data));
+
+    public static bool TryDecryptAesCbc(byte[] data, out byte[] decrypted)
+    {
+        try
+        {
+            decrypted = DecryptAesCbc(data);
+            return true;
+        }
+        catch (CryptographicException)
+        {
+            decrypted = [];
+            return false;
+        }
     }
 
     private static readonly JsonSerializerOptions _skipNullOptions = new()

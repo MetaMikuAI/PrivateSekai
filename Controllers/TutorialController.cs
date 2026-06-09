@@ -1,11 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
-using PrivateSekai.Crypto;
 using PrivateSekai.Models;
 using PrivateSekai.Services;
 
 namespace PrivateSekai.Controllers;
 
-[ApiController]
 public class TutorialController : PrskController
 {
     private readonly UserManager _users;
@@ -18,46 +16,32 @@ public class TutorialController : PrskController
     }
 
     /// <summary>
-    /// PATCH /api/user/{userId}/tutorial — 更新新手引导进度
+    /// PATCH /api/user/{userId}/tutorial
     /// </summary>
     [HttpPatch("api/user/{userId}/tutorial")]
-    public async Task<IActionResult> HandleTutorialUpdate(long userId)
+    public IActionResult HandleTutorialUpdate(long userId, [FromBody] UserTutorialRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserTutorialRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var tutorialStatus = requestData.tutorialStatus;
-        if (string.IsNullOrEmpty(tutorialStatus))
+        if (string.IsNullOrEmpty(request.tutorialStatus))
             return BadRequest("Missing tutorialStatus");
 
-        _logger.LogInformation("User {UserId} updated tutorial status to `{Status}`", userId, tutorialStatus);
+        _logger.LogInformation("User {UserId} updated tutorial status to `{Status}`", userId, request.tutorialStatus);
 
         var user = _users.GetUser(userId);
-        user.UpdateTutorialProgress(tutorialStatus);
+        user.UpdateTutorialProgress(request.tutorialStatus);
 
-        var responseData = new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
-        };
-        return PrskResponse(responseData);
+        });
     }
 
     /// <summary>
-    /// PATCH /api/user/{userId} — 更新用户名（新手引导中设名字）
+    /// PATCH /api/user/{userId}
     /// </summary>
     [HttpPatch("api/user/{userId}")]
-    public async Task<IActionResult> HandleUserUpdate(long userId)
+    public IActionResult HandleUserUpdate(long userId, [FromBody] UserNameRequest request)
     {
-        var body = await ReadBodyAsync();
-        if (body == null) return BadRequest("Empty body");
-
-        var requestData = PrskCrypto.PrskDec<UserNameRequest>(body);
-        if (requestData == null) return BadRequest("Failed to decrypt");
-
-        var newName = requestData.userGamedata?.name;
+        var newName = request.userGamedata?.name;
         if (string.IsNullOrEmpty(newName))
             return BadRequest("Missing name in userGamedata");
 
@@ -67,10 +51,9 @@ public class TutorialController : PrskController
 
         _logger.LogInformation("User {UserId} gamedata updated", userId);
 
-        var responseData = new SuiteUserCommonResponse
+        return Ok(new SuiteUserCommonResponse
         {
             updatedResources = user.GetRefreshData()
-        };
-        return PrskResponse(responseData);
+        });
     }
 }
