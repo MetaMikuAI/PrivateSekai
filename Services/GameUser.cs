@@ -423,7 +423,7 @@ public class GameUser
                     resourceLevel = 1,
                     quantity = 1
                 },
-                newFlg = isNew,
+                newFlg = isNew || IsRarity4OrHigher(cardId),
                 gachaLotteryType = "normal",
                 costume3d = costume3ds,
                 cardExtra = []
