@@ -1,9 +1,10 @@
 using System.Reflection;
-using System.Text.Json.Nodes;
 using MessagePack;
 using PrivateSekai.Config;
 using PrivateSekai.Crypto;
 using PrivateSekai.Models;
+using PrivateSekai.Models.Master;
+using PrivateSekai.Services.Master;
 
 namespace PrivateSekai.Services;
 
@@ -13,6 +14,8 @@ namespace PrivateSekai.Services;
 /// </summary>
 public class GameUser
 {
+    private static MasterDataManager Master => MasterDataManager.Instance;
+
     /// <summary>
     /// 广为人知的 Suite 数据
     /// </summary>
@@ -344,176 +347,7 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userTutorial));
     }
 
-    /// <summary>
-    /// cardEpisodes.json 的缓存, TODO: 使用 sqlite
-    /// </summary>
-    private static JsonArray? _cardEpisodesCache;
-    private static JsonArray? _musicDifficultiesCache;
-    private static JsonArray? _boostsCache;
-    private static JsonArray? _musicAchievementsCache;
-    private static JsonArray? _resourceBoxesCache;
-    private static JsonArray? _shopItemsCache;
-    private static JsonArray? _musicVocalsCache;
-    private static JsonArray? _liveMissionPassesCache;
-    private static JsonArray? _playLevelScoresCache;
-    private static JsonArray? _gachasCache;
-    private static JsonArray? _cardsCache;
-    private static JsonArray? _cardCostume3dsCache;
-    private static JsonArray? _gachaCeilItemsCache;
-    private static JsonArray? _gachaCeilExchangeSummariesCache;
-
-    private static JsonArray LoadCardEpisodes()
-    {
-        if (_cardEpisodesCache != null) return _cardEpisodesCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "cardEpisodes.json");
-        var json = File.ReadAllText(path);
-        _cardEpisodesCache = JsonNode.Parse(json)!.AsArray();
-        return _cardEpisodesCache;
-    }
-
-    private static JsonArray LoadMusicDifficulties()
-    {
-        if (_musicDifficultiesCache != null) return _musicDifficultiesCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicDifficulties.json");
-        var json = File.ReadAllText(path);
-        _musicDifficultiesCache = JsonNode.Parse(json)!.AsArray();
-        return _musicDifficultiesCache;
-    }
-
-    private static JsonArray LoadBoosts()
-    {
-        if (_boostsCache != null) return _boostsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "boosts.json");
-        var json = File.ReadAllText(path);
-        _boostsCache = JsonNode.Parse(json)!.AsArray();
-        return _boostsCache;
-    }
-
-    private static JsonArray LoadMusicAchievements()
-    {
-        if (_musicAchievementsCache != null) return _musicAchievementsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicAchievements.json");
-        var json = File.ReadAllText(path);
-        _musicAchievementsCache = JsonNode.Parse(json)!.AsArray();
-        return _musicAchievementsCache;
-    }
-
-    private static JsonArray LoadResourceBoxes()
-    {
-        if (_resourceBoxesCache != null) return _resourceBoxesCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "resourceBoxes.json");
-        var json = File.ReadAllText(path);
-        _resourceBoxesCache = JsonNode.Parse(json)!.AsArray();
-        return _resourceBoxesCache;
-    }
-
-    private static JsonArray LoadShopItems()
-    {
-        if (_shopItemsCache != null) return _shopItemsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "shopItems.json");
-        var json = File.ReadAllText(path);
-        _shopItemsCache = JsonNode.Parse(json)!.AsArray();
-        return _shopItemsCache;
-    }
-
-    private static JsonArray LoadMusicVocals()
-    {
-        if (_musicVocalsCache != null) return _musicVocalsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "musicVocals.json");
-        var json = File.ReadAllText(path);
-        _musicVocalsCache = JsonNode.Parse(json)!.AsArray();
-        return _musicVocalsCache;
-    }
-
-    private static JsonArray LoadLiveMissionPasses()
-    {
-        if (_liveMissionPassesCache != null) return _liveMissionPassesCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "liveMissionPasses.json");
-        var json = File.ReadAllText(path);
-        _liveMissionPassesCache = JsonNode.Parse(json)!.AsArray();
-        return _liveMissionPassesCache;
-    }
-
-    private static JsonArray LoadPlayLevelScores()
-    {
-        if (_playLevelScoresCache != null) return _playLevelScoresCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "playLevelScores.json");
-        var json = File.ReadAllText(path);
-        _playLevelScoresCache = JsonNode.Parse(json)!.AsArray();
-        return _playLevelScoresCache;
-    }
-
-    private static JsonArray LoadGachas()
-    {
-        if (_gachasCache != null) return _gachasCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachas.json");
-        var json = File.ReadAllText(path);
-        _gachasCache = JsonNode.Parse(json)!.AsArray();
-        return _gachasCache;
-    }
-
-    private static JsonArray LoadCards()
-    {
-        if (_cardsCache != null) return _cardsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "cards.json");
-        var json = File.ReadAllText(path);
-        _cardsCache = JsonNode.Parse(json)!.AsArray();
-        return _cardsCache;
-    }
-
-    private static JsonArray LoadCardCostume3ds()
-    {
-        if (_cardCostume3dsCache != null) return _cardCostume3dsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "cardCostume3ds.json");
-        var json = File.ReadAllText(path);
-        _cardCostume3dsCache = JsonNode.Parse(json)!.AsArray();
-        return _cardCostume3dsCache;
-    }
-
-    private static JsonArray LoadGachaCeilItems()
-    {
-        if (_gachaCeilItemsCache != null) return _gachaCeilItemsCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachaCeilItems.json");
-        var json = File.ReadAllText(path);
-        _gachaCeilItemsCache = JsonNode.Parse(json)!.AsArray();
-        return _gachaCeilItemsCache;
-    }
-
-    private static JsonArray LoadGachaCeilExchangeSummaries()
-    {
-        if (_gachaCeilExchangeSummariesCache != null) return _gachaCeilExchangeSummariesCache;
-
-        var path = Path.Combine(ServerConfig.SekaiMasterDbDiffPath, "gachaCeilExchangeSummaries.json");
-        var json = File.ReadAllText(path);
-        _gachaCeilExchangeSummariesCache = JsonNode.Parse(json)!.AsArray();
-        return _gachaCeilExchangeSummariesCache;
-    }
-
-    private static List<int> GetCardEpisodeIds(int cardId)
-    {
-        var episodes = LoadCardEpisodes();
-        var ids = new List<int>();
-        foreach (var ep in episodes)
-        {
-            if (ep is JsonObject obj && obj["cardId"]?.GetValue<int>() == cardId)
-                ids.Add(obj["id"]!.GetValue<int>());
-        }
-        while (ids.Count < 2) ids.Add(0);
-        return ids;
-    }
+    private static List<int> GetCardEpisodeIds(int cardId) => Master.GetCardEpisodeIds(cardId);
 
     public UserCard AddCard(int cardId)
     {
@@ -566,10 +400,10 @@ public class GameUser
     public UserGachaResponse ExecuteGacha(int gachaId, int gachaBehaviorId, bool isPriorityUsePaidJewel)
     {
         var now = UserManager.Now;
-        var gacha = FindGacha(gachaId);
-        var behavior = FindGachaBehavior(gacha, gachaBehaviorId);
+        var gacha = Master.GetMasterGacha(gachaId);
+        var behavior = Master.GetMasterGachaBehavior(gacha, gachaBehaviorId);
         var spinCount = GetGachaSpinCount(behavior, gachaBehaviorId);
-        var behaviorType = behavior?["gachaBehaviorType"]?.GetValue<string>();
+        var behaviorType = behavior?.gachaBehaviorType;
 
         var consumedCosts = ConsumeGachaCost(behavior, spinCount, isPriorityUsePaidJewel);
 
@@ -657,17 +491,16 @@ public class GameUser
             };
         }
 
-        var exchange = FindGachaCeilExchange(exchangeRequest.gachaExchangeId);
-        var resourceBoxId = exchange?["resourceBoxId"]?.GetValue<int>() ?? 0;
-        var obtainResources = BuildResourcesFromBox("gacha_ceil_exchange", resourceBoxId);
+        var exchange = Master.GetMasterGachaCeilExchange(exchangeRequest.gachaExchangeId);
+        var resourceBoxId = exchange?.resourceBoxId ?? 0;
+        var obtainResources = Master.BuildResourcesFromBox("gacha_ceil_exchange", resourceBoxId);
 
         var exchangeCount = exchangeRequest.exchangeCount;
-        var cost = exchange?["gachaCeilExchangeCost"] as JsonObject;
-        ConsumeGachaCeilExchangeCost(cost, exchangeCount);
+        ConsumeGachaCeilExchangeCost(exchange?.gachaCeilExchangeCost, exchangeCount);
         ConsumeGachaCeilSubstituteCost(exchange, exchangeRequest);
 
         var exchangeId = exchangeRequest.gachaExchangeId;
-        var exchangeLimit = exchange?["exchangeLimit"]?.GetValue<int>() ?? 0;
+        var exchangeLimit = exchange?.exchangeLimit ?? 0;
         UpsertUserGachaCeilExchange(exchangeId, exchangeLimit, exchangeCount);
 
         var obtained = new Dictionary<(string? Type, int Id, int Level), UserResource>();
@@ -687,49 +520,23 @@ public class GameUser
         };
     }
 
-    private static JsonObject? FindGacha(int gachaId)
+    private static int GetGachaSpinCount(MasterGachaBehavior? behavior, int gachaBehaviorId)
     {
-        foreach (var gacha in LoadGachas())
-        {
-            if (gacha is JsonObject obj && obj["id"]?.GetValue<int>() == gachaId)
-                return obj;
-        }
-
-        return null;
-    }
-
-    private static JsonObject? FindGachaBehavior(JsonObject? gacha, int gachaBehaviorId)
-    {
-        if (gacha?["gachaBehaviors"] is not JsonArray behaviors)
-            return null;
-
-        foreach (var behavior in behaviors)
-        {
-            if (behavior is JsonObject obj && obj["id"]?.GetValue<int>() == gachaBehaviorId)
-                return obj;
-        }
-
-        return null;
-    }
-
-    private static int GetGachaSpinCount(JsonObject? behavior, int gachaBehaviorId)
-    {
-        var spinCount = behavior?["spinCount"]?.GetValue<int>() ?? 0;
+        var spinCount = behavior?.spinCount ?? 0;
         if (spinCount > 0)
             return spinCount;
 
         return 1;
     }
 
-    private UserResource[] ConsumeGachaCost(JsonObject? behavior, int spinCount, bool isPriorityUsePaidJewel)
+    private UserResource[] ConsumeGachaCost(MasterGachaBehavior? behavior, int spinCount, bool isPriorityUsePaidJewel)
     {
-        var resourceCategory = behavior?["resourceCategory"]?.GetValue<string>();
-        if (string.Equals(resourceCategory, "free_resource", StringComparison.Ordinal))
+        if (string.Equals(behavior?.resourceCategory, "free_resource", StringComparison.Ordinal))
             return [];
 
-        var costResourceType = behavior?["costResourceType"]?.GetValue<string>();
-        var costResourceId = behavior?["costResourceId"]?.GetValue<int>() ?? 0;
-        var costQuantity = behavior?["costResourceQuantity"]?.GetValue<int>() ?? 300 * spinCount;
+        var costResourceType = behavior?.costResourceType;
+        var costResourceId = behavior?.costResourceId ?? 0;
+        var costQuantity = behavior?.costResourceQuantity ?? 300 * spinCount;
         if (costQuantity <= 0 || string.IsNullOrEmpty(costResourceType))
             return [];
 
@@ -824,7 +631,7 @@ public class GameUser
         return ticket.quantity;
     }
 
-    private static int[] DrawGachaCards(JsonObject? gacha, string? behaviorType, int spinCount)
+    private static int[] DrawGachaCards(MasterGacha? gacha, string? behaviorType, int spinCount)
     {
         var cardIds = new int[spinCount];
         for (var i = 0; i < cardIds.Length; i++)
@@ -847,24 +654,23 @@ public class GameUser
         return cardIds;
     }
 
-    private static int DrawGachaCard(JsonObject? gacha, Func<int, bool>? cardFilter = null)
+    private static int DrawGachaCard(MasterGacha? gacha, Func<int, bool>? cardFilter = null)
     {
         var rarityType = DrawGachaRarity(gacha, cardFilter);
         return DrawGachaCardByRarity(gacha, rarityType, cardFilter);
     }
 
-    private static string? DrawGachaRarity(JsonObject? gacha, Func<int, bool>? cardFilter)
+    private static string? DrawGachaRarity(MasterGacha? gacha, Func<int, bool>? cardFilter)
     {
-        if (gacha?["gachaCardRarityRates"] is not JsonArray rates)
+        if (gacha?.gachaCardRarityRates == null)
             return null;
 
-        var candidates = rates
-            .OfType<JsonObject>()
-            .Where(rate => rate["lotteryType"]?.GetValue<string>() == "normal")
+        var candidates = gacha.gachaCardRarityRates
+            .Where(rate => rate.lotteryType == "normal")
             .Select(rate => new
             {
-                RarityType = rate["cardRarityType"]?.GetValue<string>(),
-                Rate = rate["rate"]?.GetValue<double>() ?? 0
+                RarityType = rate.cardRarityType,
+                Rate = rate.rate
             })
             .Where(rate => !string.IsNullOrEmpty(rate.RarityType) &&
                            rate.Rate > 0 &&
@@ -887,38 +693,33 @@ public class GameUser
         return candidates[^1].RarityType;
     }
 
-    private static bool HasGachaCardInRarity(JsonObject? gacha, string rarityType, Func<int, bool>? cardFilter)
+    private static bool HasGachaCardInRarity(MasterGacha? gacha, string rarityType, Func<int, bool>? cardFilter)
     {
-        if (gacha?["gachaDetails"] is not JsonArray details)
+        if (gacha?.gachaDetails == null)
             return false;
 
-        foreach (var detail in details)
+        foreach (var detail in gacha.gachaDetails)
         {
-            if (detail is not JsonObject obj)
+            if (detail.cardId <= 0 || cardFilter?.Invoke(detail.cardId) == false)
                 continue;
 
-            var cardId = obj["cardId"]?.GetValue<int>() ?? 0;
-            if (cardId <= 0 || cardFilter?.Invoke(cardId) == false)
-                continue;
-
-            if (string.Equals(GetCardRarityType(cardId), rarityType, StringComparison.Ordinal))
+            if (string.Equals(GetCardRarityType(detail.cardId), rarityType, StringComparison.Ordinal))
                 return true;
         }
 
         return false;
     }
 
-    private static int DrawGachaCardByRarity(JsonObject? gacha, string? rarityType, Func<int, bool>? cardFilter)
+    private static int DrawGachaCardByRarity(MasterGacha? gacha, string? rarityType, Func<int, bool>? cardFilter)
     {
-        if (gacha?["gachaDetails"] is not JsonArray details)
+        if (gacha?.gachaDetails == null)
             return DrawFallbackCard(cardFilter);
 
-        var candidates = details
-            .OfType<JsonObject>()
+        var candidates = gacha.gachaDetails
             .Select(detail => new
             {
-                CardId = detail["cardId"]?.GetValue<int>() ?? 0,
-                Weight = detail["weight"]?.GetValue<int>() ?? 0
+                CardId = detail.cardId,
+                Weight = detail.weight
             })
             .Where(detail => detail.CardId > 0 && detail.Weight > 0)
             .Where(detail => cardFilter?.Invoke(detail.CardId) != false)
@@ -947,9 +748,8 @@ public class GameUser
 
     private static int DrawFallbackCard(Func<int, bool>? cardFilter)
     {
-        var candidates = LoadCards()
-            .OfType<JsonObject>()
-            .Select(card => card["id"]?.GetValue<int>() ?? 0)
+        var candidates = Master.GetMasterCards()
+            .Select(card => card.id)
             .Where(cardId => cardId > 0 && !string.Equals(GetCardRarityType(cardId), "rarity_1", StringComparison.Ordinal))
             .Where(cardId => cardFilter?.Invoke(cardId) != false)
             .ToArray();
@@ -975,18 +775,7 @@ public class GameUser
         };
 
     private static string? GetCardRarityType(int cardId) =>
-        FindCard(cardId)?["cardRarityType"]?.GetValue<string>();
-
-    private static JsonObject? FindCard(int cardId)
-    {
-        foreach (var card in LoadCards())
-        {
-            if (card is JsonObject obj && obj["id"]?.GetValue<int>() == cardId)
-                return obj;
-        }
-
-        return null;
-    }
+        Master.GetCardRarityType(cardId);
 
     private bool GrantGachaCard(int cardId)
     {
@@ -1005,7 +794,7 @@ public class GameUser
 
     private UserResource[] GrantInitialCostumes(int cardId, long now)
     {
-        var costumeIds = FindCardCostume3dIds(cardId);
+        var costumeIds = Master.GetCardCostume3dIds(cardId);
         if (costumeIds.Length == 0)
             return [];
 
@@ -1062,22 +851,6 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userCostume3dShopItems));
     }
 
-    private static int[] FindCardCostume3dIds(int cardId)
-    {
-        var result = new List<int>();
-        foreach (var costume in LoadCardCostume3ds())
-        {
-            if (costume is JsonObject obj && obj["cardId"]?.GetValue<int>() == cardId)
-            {
-                var costumeId = obj["costume3dId"]?.GetValue<int>() ?? 0;
-                if (costumeId > 0)
-                    result.Add(costumeId);
-            }
-        }
-
-        return result.ToArray();
-    }
-
     private UserGacha UpsertUserGacha(int gachaId, int gachaBehaviorId, long now)
     {
         Data.userGachas ??= [];
@@ -1104,9 +877,9 @@ public class GameUser
         return userGacha;
     }
 
-    private UserResource[] GrantGachaCeilItem(JsonObject? gacha, int gachaId, int quantity)
+    private UserResource[] GrantGachaCeilItem(MasterGacha? gacha, int gachaId, int quantity)
     {
-        var ceilItemId = ResolveGachaCeilItemId(gacha, gachaId);
+        var ceilItemId = Master.ResolveGachaCeilItemId(gacha, gachaId);
         if (ceilItemId <= 0 || quantity <= 0)
             return [];
 
@@ -1162,72 +935,32 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userGachaCeilItems));
     }
 
-    private static int ResolveGachaCeilItemId(JsonObject? gacha, int gachaId)
-    {
-        var fromGacha = gacha?["gachaCeilItemId"]?.GetValue<int>() ?? 0;
-        if (fromGacha > 0)
-            return fromGacha;
-
-        foreach (var item in LoadGachaCeilItems())
-        {
-            if (item is JsonObject obj && obj["gachaId"]?.GetValue<int>() == gachaId)
-                return obj["id"]?.GetValue<int>() ?? 0;
-        }
-
-        return 0;
-    }
-
-    private static JsonObject? FindGachaCeilExchange(int gachaCeilExchangeId)
-    {
-        foreach (var summary in LoadGachaCeilExchangeSummaries())
-        {
-            if (summary is not JsonObject summaryObj ||
-                summaryObj["gachaCeilExchanges"] is not JsonArray exchanges)
-                continue;
-
-            foreach (var exchange in exchanges)
-            {
-                if (exchange is JsonObject exchangeObj &&
-                    exchangeObj["id"]?.GetValue<int>() == gachaCeilExchangeId)
-                {
-                    return exchangeObj;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    private void ConsumeGachaCeilExchangeCost(JsonObject? cost, int exchangeCount)
+    private void ConsumeGachaCeilExchangeCost(MasterGachaCeilExchangeCost? cost, int exchangeCount)
     {
         if (cost == null || exchangeCount <= 0)
             return;
 
-        var resourceType = cost["resourceType"]?.GetValue<string>();
-        var resourceId = cost["resourceId"]?.GetValue<int>() ?? cost["gachaCeilItemId"]?.GetValue<int>() ?? 0;
-        var quantity = (cost["quantity"]?.GetValue<int>() ?? 0) * exchangeCount;
-        ConsumeResource(resourceType, resourceId, quantity);
+        var resourceId = cost.resourceId > 0 ? cost.resourceId : cost.gachaCeilItemId;
+        var quantity = cost.quantity * exchangeCount;
+        ConsumeResource(cost.resourceType, resourceId, quantity);
     }
 
-    private void ConsumeGachaCeilSubstituteCost(JsonObject? exchange, UserGachaCeilItemExchangeRequest request)
+    private void ConsumeGachaCeilSubstituteCost(MasterGachaCeilExchange? exchange, UserGachaCeilItemExchangeRequest request)
     {
-        if (exchange == null ||
+        if (exchange?.gachaCeilExchangeSubstituteCosts == null ||
             request.gachaCeilExchangeSubstituteCostId <= 0 ||
-            request.substituteCostCount <= 0 ||
-            exchange["gachaCeilExchangeSubstituteCosts"] is not JsonArray costs)
+            request.substituteCostCount <= 0)
         {
             return;
         }
 
-        foreach (var entry in costs.OfType<JsonObject>())
+        foreach (var entry in exchange.gachaCeilExchangeSubstituteCosts)
         {
-            if (entry["id"]?.GetValue<int>() != request.gachaCeilExchangeSubstituteCostId)
+            if (entry.id != request.gachaCeilExchangeSubstituteCostId)
                 continue;
 
-            var resourceType = entry["resourceType"]?.GetValue<string>();
-            var resourceId = entry["resourceId"]?.GetValue<int>() ?? 0;
-            var quantity = (entry["substituteQuantity"]?.GetValue<int>() ?? 0) * request.substituteCostCount;
-            ConsumeResource(resourceType, resourceId, quantity);
+            var quantity = entry.substituteQuantity * request.substituteCostCount;
+            ConsumeResource(entry.resourceType, entry.resourceId, quantity);
             UpsertUserGachaCeilExchangeSubstituteCost(request.gachaExchangeId, request.substituteCostCount);
             return;
         }
@@ -1740,31 +1473,16 @@ public class GameUser
 
     public void PurchaseShopItem(int shopId, int shopItemId)
     {
-        var shopItem = FindShopItem(shopId, shopItemId);
+        var shopItem = Master.GetMasterShopItem(shopId, shopItemId);
         var wasSoldOut = IsShopItemSoldOut(shopId, shopItemId);
 
         MarkShopItemSoldOut(shopId, shopItemId);
 
-        if (!wasSoldOut && shopItem?["costs"] is JsonArray costs)
-            ConsumeShopItemCosts(costs);
+        if (!wasSoldOut && shopItem?.costs != null)
+            ConsumeShopItemCosts(shopItem.costs);
 
-        var resourceBoxId = shopItem?["resourceBoxId"]?.GetValue<int>() ?? shopItemId;
+        var resourceBoxId = shopItem?.resourceBoxId ?? shopItemId;
         ApplyShopItemResources(resourceBoxId);
-    }
-
-    private static JsonObject? FindShopItem(int shopId, int shopItemId)
-    {
-        foreach (var item in LoadShopItems())
-        {
-            if (item is JsonObject obj &&
-                obj["id"]?.GetValue<int>() == shopItemId &&
-                obj["shopId"]?.GetValue<int>() == shopId)
-            {
-                return obj;
-            }
-        }
-
-        return null;
     }
 
     private bool IsShopItemSoldOut(int shopId, int shopItemId) =>
@@ -1806,17 +1524,17 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userShops));
     }
 
-    private void ConsumeShopItemCosts(JsonArray costs)
+    private void ConsumeShopItemCosts(MasterShopItemCostEntry[] costs)
     {
         foreach (var entry in costs)
         {
-            if (entry is not JsonObject costEntry ||
-                costEntry["cost"] is not JsonObject cost)
+            var cost = entry.cost;
+            if (cost == null)
                 continue;
 
-            var resourceType = cost["resourceType"]?.GetValue<string>();
-            var resourceId = cost["resourceId"]?.GetValue<int>() ?? 0;
-            var quantity = cost["quantity"]?.GetValue<int>() ?? 0;
+            var resourceType = cost.resourceType;
+            var resourceId = cost.resourceId;
+            var quantity = cost.quantity;
             if (quantity <= 0)
                 continue;
 
@@ -1962,7 +1680,7 @@ public class GameUser
 
     private void ApplyShopItemResources(int resourceBoxId)
     {
-        foreach (var resource in BuildResourcesFromBox("shop_item", resourceBoxId))
+        foreach (var resource in Master.BuildResourcesFromBox("shop_item", resourceBoxId))
         {
             if (resource.quantity <= 0)
                 continue;
@@ -2000,14 +1718,12 @@ public class GameUser
 
     private void GrantDefaultMusicVocals(int musicId)
     {
-        foreach (var vocal in LoadMusicVocals())
+        foreach (var vocal in Master.GetMasterMusicVocals())
         {
-            if (vocal is not JsonObject obj ||
-                obj["musicId"]?.GetValue<int>() != musicId ||
-                obj["releaseConditionId"]?.GetValue<int>() != 5)
+            if (vocal.musicId != musicId || vocal.releaseConditionId != 5)
                 continue;
 
-            GrantMusicVocal(musicId, obj["id"]?.GetValue<int>() ?? 0);
+            GrantMusicVocal(musicId, vocal.id);
         }
     }
 
@@ -2016,14 +1732,9 @@ public class GameUser
         if (musicVocalId <= 0)
             return;
 
-        foreach (var vocal in LoadMusicVocals())
-        {
-            if (vocal is JsonObject obj && obj["id"]?.GetValue<int>() == musicVocalId)
-            {
-                GrantMusicVocal(obj["musicId"]?.GetValue<int>() ?? 0, musicVocalId);
-                return;
-            }
-        }
+        var vocal = Master.GetMasterMusicVocal(musicVocalId);
+        if (vocal != null)
+            GrantMusicVocal(vocal.musicId, musicVocalId);
     }
 
     private void GrantMusicVocal(int musicId, int musicVocalId)
@@ -2086,8 +1797,10 @@ public class GameUser
                           request.badCount == 0 &&
                           request.missCount == 0;
 
-        var scoreRank = session != null ? BuildScoreRank(session.MusicDifficultyId, request.score) : BuildScoreRank(request.score);
-        var boost = BuildMasterBoost(session?.BoostCount ?? 0);
+        var scoreRank = session != null
+            ? Master.BuildScoreRank(session.MusicDifficultyId, request.score)
+            : MasterDataManager.BuildScoreRank(request.score);
+        var boost = Master.BuildMasterBoost(session?.BoostCount ?? 0);
         var userLivePoint = BuildUserLivePoint(boost);
         var highScoreFlg = false;
         DeckCardUpdateExpResult[] deckCardExpResults = [];
@@ -2165,7 +1878,7 @@ public class GameUser
     {
         Data.userMusicResults ??= [];
         var results = Data.userMusicResults.ToList();
-        var difficultyType = ResolveMusicDifficultyType(session.MusicDifficultyId);
+        var difficultyType = Master.ResolveMusicDifficultyType(session.MusicDifficultyId);
         var result = results.FirstOrDefault(r =>
             r.musicId == session.MusicId &&
             string.Equals(r.musicDifficultyType, difficultyType, StringComparison.Ordinal));
@@ -2201,7 +1914,7 @@ public class GameUser
         UserLiveClearRequest request,
         string scoreRank)
     {
-        var achievementIds = ResolveMusicAchievementIds(session.MusicDifficultyId, request.maxCombo, scoreRank);
+        var achievementIds = Master.ResolveMusicAchievementIds(session.MusicDifficultyId, request.maxCombo, scoreRank);
 
         Data.userMusicAchievements ??= [];
         var achievements = Data.userMusicAchievements.ToList();
@@ -2235,8 +1948,8 @@ public class GameUser
         var rewards = new List<UserResource>();
         foreach (var achievement in achievements)
         {
-            var resourceBoxId = GetMusicAchievementResourceBoxId(achievement.musicAchievementId);
-            rewards.AddRange(BuildResourcesFromBox("music_achievement", resourceBoxId));
+            var resourceBoxId = Master.GetMusicAchievementResourceBoxId(achievement.musicAchievementId);
+            rewards.AddRange(Master.BuildResourcesFromBox("music_achievement", resourceBoxId));
         }
 
         return rewards.ToArray();
@@ -2244,14 +1957,14 @@ public class GameUser
 
     private static UserResource[] BuildScoreRankRewards(int musicDifficultyId, string scoreRank, MasterBoost boost)
     {
-        var playLevel = ResolveMusicPlayLevel(musicDifficultyId);
+        var playLevel = Master.ResolveMusicPlayLevel(musicDifficultyId);
         var resourceBoxIds = GetScoreRankRewardResourceBoxIds(playLevel, scoreRank);
         if (resourceBoxIds.Length == 0)
             return [];
 
         var rewardRate = Math.Max(1, boost.rewardRate);
         return resourceBoxIds
-            .SelectMany(resourceBoxId => BuildResourcesFromBox("score_rank_reward_detail", resourceBoxId))
+            .SelectMany(resourceBoxId => Master.BuildResourcesFromBox("score_rank_reward_detail", resourceBoxId))
             .Select(reward => new UserResource
             {
                 resourceType = reward.resourceType,
@@ -2455,47 +2168,13 @@ public class GameUser
         };
     }
 
-    private static MasterBoost BuildMasterBoost(int boostCount)
-    {
-        foreach (var boost in LoadBoosts())
-        {
-            if (boost is JsonObject obj && obj["costBoost"]?.GetValue<int>() == boostCount)
-            {
-                return new MasterBoost
-                {
-                    id = obj["id"]?.GetValue<int>() ?? boostCount + 1,
-                    costBoost = boostCount,
-                    isEventOnly = obj["isEventOnly"]?.GetValue<bool>() ?? false,
-                    expRate = obj["expRate"]?.GetValue<int>() ?? 1,
-                    rewardRate = obj["rewardRate"]?.GetValue<int>() ?? 1,
-                    livePointRate = obj["livePointRate"]?.GetValue<int>() ?? 1,
-                    eventPointRate = obj["eventPointRate"]?.GetValue<int>() ?? 1,
-                    bondsExpRate = obj["bondsExpRate"]?.GetValue<int>() ?? 1
-                };
-            }
-        }
-
-        var rate = boostCount <= 0 ? 1 : boostCount * 5;
-        return new MasterBoost
-        {
-            id = boostCount + 1,
-            costBoost = boostCount,
-            isEventOnly = false,
-            expRate = rate,
-            rewardRate = rate,
-            livePointRate = rate,
-            eventPointRate = rate,
-            bondsExpRate = rate
-        };
-    }
-
     private static UserLivePoint BuildUserLivePoint(MasterBoost boost) =>
         new()
         {
             addNormalProgress = boost.livePointRate,
             addDailyBonusProgress = 0,
             livePointBonusRemaining = boost.costBoost,
-            liveMissionPeriodId = GetCurrentLiveMissionPeriodId()
+            liveMissionPeriodId = Master.GetCurrentLiveMissionPeriodId()
         };
 
     private void UpdateLiveMissionProgress(UserLivePoint livePoint)
@@ -2527,43 +2206,6 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userLiveMissions));
     }
 
-    private static string BuildScoreRank(int musicDifficultyId, int score)
-    {
-        var playLevel = ResolveMusicPlayLevel(musicDifficultyId);
-        if (playLevel > 0)
-        {
-            foreach (var scoreThreshold in LoadPlayLevelScores())
-            {
-                if (scoreThreshold is not JsonObject obj ||
-                    !string.Equals(obj["liveType"]?.GetValue<string>(), "solo", StringComparison.Ordinal) ||
-                    obj["playLevel"]?.GetValue<int>() != playLevel)
-                    continue;
-
-                if (score >= (obj["s"]?.GetValue<int>() ?? int.MaxValue))
-                    return "rank_s";
-                if (score >= (obj["a"]?.GetValue<int>() ?? int.MaxValue))
-                    return "rank_a";
-                if (score >= (obj["b"]?.GetValue<int>() ?? int.MaxValue))
-                    return "rank_b";
-                if (score >= (obj["c"]?.GetValue<int>() ?? int.MaxValue))
-                    return "rank_c";
-                return "rank_d";
-            }
-        }
-
-        return BuildScoreRank(score);
-    }
-
-    private static string BuildScoreRank(int score) =>
-        score switch
-        {
-            >= 600_000 => "rank_s",
-            >= 300_000 => "rank_a",
-            >= 150_000 => "rank_b",
-            >= 50_000 => "rank_c",
-            _ => "rank_d"
-        };
-
     private static string BuildPlayResult(bool fullCombo, bool fullPerfect, int life)
     {
         if (life <= 0)
@@ -2573,142 +2215,6 @@ public class GameUser
         if (fullCombo)
             return "full_combo";
         return "clear";
-    }
-
-    private static int[] ResolveMusicAchievementIds(int musicDifficultyId, int maxCombo, string scoreRank)
-    {
-        var difficultyType = ResolveMusicDifficultyType(musicDifficultyId);
-        var totalNoteCount = ResolveMusicTotalNoteCount(musicDifficultyId);
-        var achievementIds = new List<int>();
-
-        foreach (var achievement in LoadMusicAchievements())
-        {
-            if (achievement is not JsonObject obj)
-                continue;
-
-            var type = obj["musicAchievementType"]?.GetValue<string>();
-            var value = obj["musicAchievementTypeValue"]?.GetValue<string>();
-            if (type == "score_rank" && IsScoreRankReached(scoreRank, value))
-            {
-                achievementIds.Add(obj["id"]!.GetValue<int>());
-                continue;
-            }
-
-            if (type != "combo" ||
-                !string.Equals(obj["musicDifficultyType"]?.GetValue<string>(), difficultyType, StringComparison.Ordinal) ||
-                totalNoteCount <= 0 ||
-                value == null ||
-                !double.TryParse(value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var ratio))
-                continue;
-
-            if (maxCombo >= (int)Math.Ceiling(totalNoteCount * ratio))
-                achievementIds.Add(obj["id"]!.GetValue<int>());
-        }
-
-        return achievementIds.OrderBy(id => id).ToArray();
-    }
-
-    private static bool IsScoreRankReached(string scoreRank, string? achievementRank)
-    {
-        var actual = ScoreRankOrder(scoreRank);
-        var required = ScoreRankOrder(achievementRank);
-        return required > 0 && actual >= required;
-    }
-
-    private static int ScoreRankOrder(string? rank)
-    {
-        var normalized = rank?.ToUpperInvariant();
-        return normalized switch
-        {
-            "RANK_SS" or "RANK_S" or "RANK_S_PLUS" => 4,
-            "RANK_A" => 3,
-            "RANK_B" => 2,
-            "RANK_C" => 1,
-            _ => 0
-        };
-    }
-
-    private static int GetMusicAchievementResourceBoxId(int musicAchievementId)
-    {
-        foreach (var achievement in LoadMusicAchievements())
-        {
-            if (achievement is JsonObject obj && obj["id"]?.GetValue<int>() == musicAchievementId)
-                return obj["resourceBoxId"]?.GetValue<int>() ?? 0;
-        }
-
-        return 0;
-    }
-
-    private static UserResource[] BuildResourcesFromBox(string purpose, int resourceBoxId)
-    {
-        if (resourceBoxId <= 0)
-            return [];
-
-        foreach (var box in LoadResourceBoxes())
-        {
-            if (box is not JsonObject obj ||
-                !string.Equals(obj["resourceBoxPurpose"]?.GetValue<string>(), purpose, StringComparison.Ordinal) ||
-                obj["id"]?.GetValue<int>() != resourceBoxId ||
-                obj["details"] is not JsonArray details)
-                continue;
-
-            return details
-                .OfType<JsonObject>()
-                .Select(detail => new UserResource
-                {
-                    resourceType = detail["resourceType"]?.GetValue<string>(),
-                    resourceId = detail["resourceId"]?.GetValue<int>() ?? 0,
-                    resourceLevel = detail["resourceLevel"]?.GetValue<int>() ?? 0,
-                    quantity = detail["resourceQuantity"]?.GetValue<int>() ?? 0
-                })
-                .ToArray();
-        }
-
-        return [];
-    }
-
-    private static int GetCurrentLiveMissionPeriodId()
-    {
-        var current = 0;
-        foreach (var pass in LoadLiveMissionPasses())
-        {
-            if (pass is JsonObject obj)
-                current = Math.Max(current, obj["liveMissionPeriodId"]?.GetValue<int>() ?? 0);
-        }
-
-        return current;
-    }
-
-    private static string ResolveMusicDifficultyType(int musicDifficultyId)
-    {
-        var difficulty = FindMusicDifficulty(musicDifficultyId);
-        if (difficulty != null)
-            return difficulty["musicDifficulty"]?.GetValue<string>() ?? musicDifficultyId.ToString();
-
-        return musicDifficultyId.ToString();
-    }
-
-    private static int ResolveMusicTotalNoteCount(int musicDifficultyId)
-    {
-        var difficulty = FindMusicDifficulty(musicDifficultyId);
-        return difficulty?["totalNoteCount"]?.GetValue<int>() ?? 0;
-    }
-
-    private static int ResolveMusicPlayLevel(int musicDifficultyId)
-    {
-        var difficulty = FindMusicDifficulty(musicDifficultyId);
-        return difficulty?["playLevel"]?.GetValue<int>() ?? 0;
-    }
-
-    private static JsonObject? FindMusicDifficulty(int musicDifficultyId)
-    {
-        foreach (var difficulty in LoadMusicDifficulties())
-        {
-            if (difficulty is JsonObject obj && obj["id"]?.GetValue<int>() == musicDifficultyId)
-                return obj;
-        }
-
-        return null;
     }
 
     private static readonly Random Rng = new();

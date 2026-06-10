@@ -20,6 +20,7 @@ public static class ServerConfig
     public static string TemplatePath { get; private set; } = null!;
     public static string SuiteMasterFilePath { get; private set; } = null!;
     public static string SekaiMasterDbDiffPath { get; private set; } = null!;
+    public static MasterCacheConfig MasterCache { get; private set; } = new();
 
     public static void Load(IConfiguration config)
     {
@@ -43,6 +44,8 @@ public static class ServerConfig
         TemplatePath          = Require(paths, "Template");
         SuiteMasterFilePath   = Require(paths, "SuiteMasterFile");
         SekaiMasterDbDiffPath = Require(paths, "SekaiMasterDbDiff");
+
+        MasterCache = s.GetSection("MasterCache").Get<MasterCacheConfig>() ?? new MasterCacheConfig();
     }
 
     private static string Require(IConfigurationSection section, string key) =>

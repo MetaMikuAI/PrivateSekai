@@ -1,6 +1,8 @@
 using PrivateSekai.Config;
 using PrivateSekai.Crypto;
+using PrivateSekai.Middleware;
 using PrivateSekai.Services;
+using PrivateSekai.Services.Master;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,6 +14,7 @@ builder.WebHost.ConfigureKestrel(options =>
 });
 
 builder.Services.AddSingleton<UserManager>();
+builder.Services.AddSingleton(_ => new MasterDataManager(ServerConfig.MasterCache));
 builder.Services.AddControllers(options =>
     options.InputFormatters.Insert(0, new PrskMessagePackInputFormatter()));
 
@@ -42,9 +45,11 @@ app.UseExceptionHandler(handler => handler.Run(async ctx =>
 }));
 
 app.UseRouting();
+app.UseMiddleware<MasterRequestScopeMiddleware>();
 app.UseMiddleware<PrskCryptoMiddleware>();
 app.MapControllers();
 
+MasterDataManager.Bind(app.Services.GetRequiredService<MasterDataManager>());
 app.Services.GetRequiredService<UserManager>();
 
 if (!Directory.Exists(ServerConfig.TemplatePath))
