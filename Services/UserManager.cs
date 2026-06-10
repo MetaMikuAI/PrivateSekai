@@ -4,25 +4,52 @@ using PrivateSekai.Models;
 
 namespace PrivateSekai.Services;
 
-/// <summary>
-/// 对应 Python game/users.py 的 Users 类
-/// 管理所有在线用户数据，DI 注册为 Singleton
-/// </summary>
+
 public class UserManager
 {
     private static readonly JsonSerializerOptions JsonOpts = new() { IncludeFields = true };
 
     private readonly Dictionary<long, GameUser> _users = new();
     private readonly ILogger<UserManager> _logger;
+    
+    public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
     /// <summary>模板数据（对应 template/api_user_auth.json）</summary>
-    public UserAuthResponse ApiUserAuth { get; private set; } = null!;
+    private static UserAuthResponse ApiUserAuth { get; set; } = null!;
+
+    public static UserAuthResponse GetApiUserAuth(string sessionToken)
+    {
+        ApiUserAuth.sessionToken = sessionToken;
+        return ApiUserAuth;
+    }
 
     /// <summary>模板数据（对应 template/api_system.json）</summary>
-    public SystemResponse ApiSystem { get; private set; } = null!;
+    private static SystemResponse ApiSystem { get; set; } = null!;
 
-    /// <summary>用户自定义补丁回调</summary>
-    public Action<GameUser>? UserCustomizePatch { get; set; }
+    public static SystemResponse GetApiSystem()
+    {
+        ApiSystem.serverDate = Now;
+        return ApiSystem;
+    }
+    
+    /// <summary>自定义补丁回调</summary>
+    public Action<GameUser>? UserCustomizePatch => (user) =>
+    {
+        // 默认补丁，用于测试
+        if (user.Data.userChargedCurrency != null)
+            user.Data.userChargedCurrency.paid = 20070831;
+        SetUserMaterialQuantity(user, 13, 20070831);
+        
+        
+        if (ServerConfig.SkipTutorial)
+        {
+            user.Data.userTutorial = new UserTutorial
+            {
+                tutorialStatus = "end",
+                tutorialEndAt = Now
+            };
+        }
+    };
 
     public UserManager(ILogger<UserManager> logger)
     {
@@ -31,6 +58,9 @@ public class UserManager
         CreateUser0();
     }
 
+    /// <summary>
+    /// 加载模板数据: api_user_auth.json 和 api_system.json
+    /// </summary>
     private void LoadTemplates()
     {
         var basePath = ServerConfig.TemplatePath;
@@ -44,61 +74,36 @@ public class UserManager
             File.ReadAllText(sysPath), JsonOpts)!;
     }
 
+    /// <summary>
+    /// 从 user_0.json 创建模板用户 0
+    /// </summary>
     private void CreateUser0()
     {
         var templatePath = Path.Combine(ServerConfig.TemplatePath, "user_0.json");
         var json = File.ReadAllText(templatePath);
         var data = JsonSerializer.Deserialize<SuiteUser>(json, JsonOpts)!;
-
         var user = new GameUser(data);
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        user.Data.now = now;
-        if (ServerConfig.SkipTutorial)
-        {
-            user.Data.userTutorial = new UserTutorial
-            {
-                tutorialStatus = "end",
-                tutorialEndAt = now
-            };
-        }
+        
         user.EnsureShopAreaActionSets();
-
-        // 对应 Python config.py 的 user_customize_patch
         UserCustomizePatch?.Invoke(user);
-        // 默认补丁：设置 paid = 20070831
-        if (user.Data.userChargedCurrency != null)
-            user.Data.userChargedCurrency.paid = 20070831;
-        SetUserMaterialQuantity(user, 13, 20070831);
-
+        
         _users[0] = user;
     }
-
-    private static void SetUserMaterialQuantity(GameUser user, int materialId, int quantity)
-    {
-        user.Data.userMaterials ??= [];
-        var materials = user.Data.userMaterials.ToList();
-        var material = materials.FirstOrDefault(m => m.materialId == materialId);
-        if (material == null)
-        {
-            material = new UserMaterial
-            {
-                materialId = materialId
-            };
-            materials.Add(material);
-        }
-
-        material.quantity = quantity;
-        user.Data.userMaterials = materials.OrderBy(m => m.materialId).ToArray();
-    }
-
+    
     public GameUser GetUser(long userId)
     {
-        if (!_users.ContainsKey(userId))
-            _users[userId] = new GameUser(new SuiteUser());
+        if (userId == 0 && !UserExists(0))
+            throw new Exception("Template user 0 not found");
+
+        if (!UserExists(userId))
+        {
+            _logger.LogWarning($"User {userId} not found, forking new user");
+            ForkNewUser(userId);
+        }
         return _users[userId];
     }
-
-    public bool UserExists(long userId) => _users.ContainsKey(userId);
+    
+    internal bool UserExists(long userId) => _users.ContainsKey(userId);
 
     public long GetNewUserId() =>
         _users.Keys.DefaultIfEmpty(-1).Max() + 1;
@@ -110,9 +115,7 @@ public class UserManager
         var newUser = fromUser.DeepClone();
 
         newUser.InitAllUserId(newUserId);
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        newUser.InitAllUserTime(now);
-        newUser.InitNotSuite();
+        newUser.InitAllUserTime(Now);
 
         _users[newUserId] = newUser;
         _logger.LogInformation("New user forked: ID={UserId}", newUserId);
@@ -129,5 +132,25 @@ public class UserManager
     {
         foreach (var kv in _users)
             yield return (kv.Key, kv.Value);
+    }
+    
+    
+    
+    private static void SetUserMaterialQuantity(GameUser user, int materialId, int quantity)
+    {
+        user.Data.userMaterials ??= [];
+        var materials = user.Data.userMaterials.ToList();
+        var material = materials.FirstOrDefault(m => m.materialId == materialId);
+        if (material == null)
+        {
+            material = new UserMaterial
+            {
+                materialId = materialId
+            };
+            materials.Add(material);
+        }
+
+        material.quantity = quantity;
+        user.Data.userMaterials = materials.OrderBy(m => m.materialId).ToArray();
     }
 }

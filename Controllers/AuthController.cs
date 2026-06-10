@@ -18,7 +18,7 @@ public class AuthController : PrskController
     }
 
     /// <summary>
-    /// PUT /api/user/{userId}/auth
+    /// 认证已有账号并刷新客户端会话。客户端用本地保存的凭证和设备信息换取新的 `sessionToken`，同时接收版本信息、资源差异、规约状态、封禁信息和后续 master 加载所需路径。
     /// </summary>
     [HttpPut("api/user/{userId}/auth")]
     public IActionResult HandleAuthUser(long userId, [FromBody] UserAuthRequest request)
@@ -34,23 +34,18 @@ public class AuthController : PrskController
 
         _logger.LogInformation("User {UserId} authenticated", userId);
 
-        var responseData = MessagePackSerializer.Deserialize<UserAuthResponse>(
-            MessagePackSerializer.Serialize(_users.ApiUserAuth));
-        responseData.sessionToken = JwtSignature.GenSessionToken(userId);
-        responseData.updatedResources = null;
-
+        var responseData = UserManager.GetApiUserAuth(JwtSignature.GenSessionToken(userId));
+        
         return Ok(responseData);
     }
 
     /// <summary>
-    /// GET /api/system
+    /// 游戏客户端确认系统状态和版本信息
     /// </summary>
     [HttpGet("api/system")]
     public IActionResult HandleSystemInfo()
     {
-        var responseData = MessagePackSerializer.Deserialize<SystemResponse>(
-            MessagePackSerializer.Serialize(_users.ApiSystem));
-        responseData.serverDate = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var responseData = UserManager.GetApiSystem();
         return Ok(responseData);
     }
 }

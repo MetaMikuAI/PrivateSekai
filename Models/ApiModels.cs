@@ -118,12 +118,6 @@ public class UserProfileRequest
     [Key("profileImageId")] public int? profileImageId;
 }
 
-[MessagePackObject]
-public class UserGamedataUpdateRequest
-{
-    [Key("userGamedata")] public UserGamedata? userGamedata;
-}
-
 // ===================== Present =====================
 
 [MessagePackObject]
@@ -173,7 +167,47 @@ public class UserCardExchangeResponse
 public class UserStoryResponse
 {
     [Key("updatedResources")] public SuiteUser? updatedResources;
-    [Key("userObtainResourceResults")] public object[]? userObtainResourceResults;
+    [Key("obtainedResources")] public UserResource[]? obtainedResources;
+}
+
+[MessagePackObject]
+public class UserStoryRequest
+{
+    [Key("cardEpisodeReleaseCostType")] public string? cardEpisodeReleaseCostType;
+}
+
+[MessagePackObject]
+public class UserStoryCostResponse
+{
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+    [Key("consumedResources")] public UserResource[]? consumedResources;
+}
+
+[MessagePackObject]
+public class UserStoryLogRequest
+{
+    [Key("noSkip")] public bool noSkip;
+    [Key("useSkip")] public bool useSkip;
+    [Key("autoFinish")] public bool autoFinish;
+    [Key("useAuto")] public bool useAuto;
+    [Key("fastForward")] public bool fastForward;
+    [Key("voice")] public bool voice;
+    [Key("numPages")] public int numPages;
+    [Key("continuousPlayStart")] public bool continuousPlayStart;
+}
+
+[MessagePackObject]
+public class UserStoryLogResponse
+{
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+    [Key("userObtainResourceResults")] public UserObtainResourceResult[]? userObtainResourceResults;
+}
+
+[MessagePackObject]
+public class UserObtainResourceResult
+{
+    [Key("obtainReason")] public string? obtainReason;
+    [Key("userResources")] public UserResource[]? userResources;
 }
 
 [MessagePackObject]

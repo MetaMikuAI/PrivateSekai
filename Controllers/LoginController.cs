@@ -17,7 +17,7 @@ public class LoginController : PrskController
     }
 
     /// <summary>
-    /// POST /api/user — 注册新用户
+    /// 注册新用户账号。客户端在本地没有已保存账号时调用它，拿到新用户登记信息、后续认证用凭证，以及一份初始用户数据。
     /// </summary>
     [HttpPost("api/user")]
     public IActionResult HandleRegisterUser([FromBody] UserAuthRequest _)
@@ -35,9 +35,11 @@ public class LoginController : PrskController
             updatedResources = suiteData
         });
     }
-
+    
     /// <summary>
-    /// GET /api/suite/user/{userId}
+    /// 拉取指定用户的完整 `SuiteUser` 数据。客户端用它在登录后建立完整本地用户状态，也会在部分功能检测到本地状态可能过期时用它做全量同步。
+    /// <param name="userId"></param>
+    /// <returns>完整用户数据</returns>
     /// </summary>
     [HttpGet("api/suite/user/{userId}")]
     public IActionResult HandleSuiteUser(long userId)
@@ -50,7 +52,7 @@ public class LoginController : PrskController
     }
 
     /// <summary>
-    /// GET /api/suite/user/{userId}/parts?name=...
+    /// 按 `name` 拉取指定用户数据片段。客户端当前确认用它刷新好友相关数据，返回仍是 `SuiteUser` 结构，但通常只需要包含请求的片段。
     /// </summary>
     [HttpGet("api/suite/user/{userId}/parts")]
     public IActionResult HandleSuiteUserParts(long userId, [FromQuery(Name = "name")] string[]? names)

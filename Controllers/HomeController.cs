@@ -26,7 +26,7 @@ public class HomeController : PrskController
         if (request?.refreshableTypes?.Contains("lottery_action_set") == true)
             user.RefreshAreaActionSets();
 
-        user.UpdateRefreshableTypes("userFriends");
+        user.UpdateRefreshableType(nameof(SuiteUser.userFriends));
 
         return Ok(new SuiteUserCommonResponse
         {

@@ -47,7 +47,7 @@ public class TutorialController : PrskController
 
         var user = _users.GetUser(userId);
         user.UpdateUserName(newName);
-        user.UpdateRefreshableTypes("userGamedata");
+        user.UpdateRefreshableType(nameof(SuiteUser.userGamedata));
 
         _logger.LogInformation("User {UserId} gamedata updated", userId);
 

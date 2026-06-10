@@ -13,10 +13,14 @@ namespace PrivateSekai.Services;
 /// </summary>
 public class GameUser
 {
-    /// <summary>主数据（对应 SuiteUser 结构）</summary>
+    /// <summary>
+    /// 广为人知的 Suite 数据
+    /// </summary>
     public SuiteUser Data { get; private set; }
 
-    /// <summary>私有数据，不随 GetSuiteUserData 导出</summary>
+    /// <summary>
+    /// 不随 GetSuiteUserData 导出的私有数据
+    /// </summary>
     public NotSuiteData NotSuite { get; private set; }
 
     /// <summary>反射缓存：MessagePack Key → SuiteUser FieldInfo</summary>
@@ -28,24 +32,37 @@ public class GameUser
                 f => f
             );
 
+    private static readonly Dictionary<string, string> SuiteUserFieldKeys =
+        typeof(SuiteUser).GetFields()
+            .Where(f => f.GetCustomAttribute<KeyAttribute>()?.StringKey != null)
+            .ToDictionary(
+                f => f.Name,
+                f => f.GetCustomAttribute<KeyAttribute>()!.StringKey!
+            );
+
+    /// <summary>
+    /// 无实义
+    /// </summary>
     private const long TemplatePlaceholderTimestamp = 1188486000000L; // 2007-08-30T15:00:00Z
+    
+    /// <summary>
+    /// TODO: 移动到新手教程结束(或其他某个正确的位置)后直接解锁，而非每次刷新
+    /// </summary>
     private static readonly Dictionary<int, int[]> FixedShopActionSetsByArea = new()
     {
         [3] = [4, 384, 2002, 2005],
         [4] = [3, 838, 2001, 2006]
     };
-
-    public GameUser(SuiteUser data)
+    
+    public GameUser(SuiteUser? data = null)
     {
-        Data = data;
+        Data = data ?? new SuiteUser();
         NotSuite = new NotSuiteData();
     }
 
     public long GetUserId() =>
         Data.userRegistration?.userId ?? 0;
-
-    // ===================== init 方法 =====================
-
+    
     public void InitAllUserId(long newUserId)
     {
         if (Data.userRegistration != null)
@@ -75,8 +92,8 @@ public class GameUser
     public void InitAllUserTime(long currentTime)
     {
         Data.now = currentTime;
-        if (Data.userRegistration != null) Data.userRegistration.registeredAt = (ulong)currentTime;
-        if (Data.userBoost != null) Data.userBoost.recoveryAt = (ulong)currentTime;
+        Data.userRegistration?.registeredAt = (ulong)currentTime;
+        Data.userBoost?.recoveryAt = (ulong)currentTime;
 
         if (Data.userCards != null)
             foreach (var card in Data.userCards) card.createdAt = currentTime;
@@ -86,39 +103,21 @@ public class GameUser
 
         if (Data.userReleaseConditions != null)
             foreach (var cond in Data.userReleaseConditions) cond.createdAt = currentTime;
-
-        if (ServerConfig.SkipTutorial)
-        {
-            Data.userTutorial = new UserTutorial
-            {
-                tutorialStatus = "end",
-                tutorialEndAt = currentTime
-            };
-        }
     }
-
-    public void InitNotSuite()
-    {
-        NotSuite = new NotSuiteData();
-    }
-
-    // ===================== 数据导出 =====================
-
+    
     public SuiteUser GetSuiteUserData()
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = UserManager.Now;
         Data.now = now;
         NormalizeUserEventBreakTime(now);
         EnsureShopAreaActionSets();
 
-        // MessagePack 序列化往返实现深拷贝
-        var bytes = MessagePackSerializer.Serialize(Data);
-        return MessagePackSerializer.Deserialize<SuiteUser>(bytes);
+        return Data;
     }
-
+    
     public SuiteUser GetRefreshData(HashSet<string>? deleteRtypes = null)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = UserManager.Now;
         NormalizeUserEventBreakTime(now);
 
         var baseRtypes = new HashSet<string>
@@ -159,7 +158,7 @@ public class GameUser
 
     public SuiteUser GetSuiteUserParts(IEnumerable<string>? partNames)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = UserManager.Now;
         NormalizeUserEventBreakTime(now);
 
         var result = new SuiteUser
@@ -168,26 +167,27 @@ public class GameUser
             refreshableTypes = []
         };
 
-        var hasPart = false;
-        if (partNames != null)
+        if (partNames == null)
         {
-            foreach (var partName in partNames)
-            {
-                switch (partName)
-                {
-                    case "user_event_break_time":
-                        result.userEventBreakTime = Data.userEventBreakTime;
-                        hasPart = true;
-                        break;
-                    case "user_friend":
-                        result.userFriends = Data.userFriends;
-                        hasPart = true;
-                        break;
-                }
-            }
+            return GetRefreshData();
         }
 
-        return hasPart ? result : GetRefreshData();
+        foreach (var partName in partNames)
+        {
+            switch (partName)
+            {
+                case "user_event_break_time":
+                    result.userEventBreakTime = Data.userEventBreakTime;
+                    break;
+                case "user_friend":
+                    result.userFriends = Data.userFriends;
+                    break;
+                default:
+                    return GetRefreshData();
+            }
+        }
+        
+        return result;
     }
 
     private void NormalizeUserEventBreakTime(long now)
@@ -208,18 +208,37 @@ public class GameUser
     
     public void UpdateUserName(string newName)
     {
-        if (Data.userGamedata != null)
-            Data.userGamedata.name = newName;
+        Data.userGamedata?.name = newName;
     }
 
-    public void UpdateRefreshableTypes(string rtype)
+    /// <summary>
+    /// 标记需更新字段，将在获取 UpdateResource 时将对应数据段返回给客户端，TODO: 考虑使用标记位而非字段表
+    /// </summary>
+    /// <param name="suiteUserFieldName"></param>
+    /// <exception cref="ArgumentException"></exception>
+    public void UpdateRefreshableType(string suiteUserFieldName)
+    {
+        if (!SuiteUserFieldKeys.TryGetValue(suiteUserFieldName, out var rtype))
+            throw new ArgumentException($"Unknown SuiteUser field: {suiteUserFieldName}", nameof(suiteUserFieldName));
+
+        AddRefreshableType(rtype);
+    }
+
+    public void UpdateRefreshableTypes(IEnumerable<string> suiteUserFieldNames)
+    {
+        foreach (var suiteUserFieldName in suiteUserFieldNames)
+        {
+            UpdateRefreshableType(suiteUserFieldName);
+        }
+    }
+    
+
+    private void AddRefreshableType(string rtype)
     {
         Data.refreshableTypes ??= [];
         if (!Data.refreshableTypes.Contains(rtype))
             Data.refreshableTypes.Add(rtype);
     }
-
-    // ===================== Appeal Mixin =====================
 
     public void MarkAppealsViewed(int[]? appealIds)
     {
@@ -236,13 +255,13 @@ public class GameUser
         {
             appealIds = mergedIds
         };
-        UpdateRefreshableTypes("userViewableAppeal");
+        UpdateRefreshableType(nameof(SuiteUser.userViewableAppeal));
     }
 
     public void RefreshAreaActionSets()
     {
         EnsureShopAreaActionSets();
-        UpdateRefreshableTypes("userAreas");
+        UpdateRefreshableType(nameof(SuiteUser.userAreas));
     }
 
     public void EnsureShopAreaActionSets()
@@ -279,6 +298,9 @@ public class GameUser
         }
     }
 
+    /// <summary>
+    /// 阅读不同团体的初始剧情后，会解锁对应的角色卡牌，现仅只实现新手教程部分，未实现阅读其他初始剧情补发卡牌的功能 (TODO)
+    /// </summary>
     private static readonly Dictionary<string, int[]> TutorialCardsByUnit = new()
     {
         ["light_sound_opening"]     = [1, 5, 9, 13, 81, 82, 89, 93, 97, 98, 101, 105],
@@ -297,29 +319,34 @@ public class GameUser
 
         if (oldStatus != null && TutorialCardsByUnit.TryGetValue(oldStatus, out var cardIds))
         {
-            UpdateRefreshableTypes("userCards");
-            UpdateRefreshableTypes("userDecks");
-            UpdateRefreshableTypes("userUnitEpisodeStatuses");
-
             foreach (var cardId in cardIds)
                 AddCard(cardId);
 
-            UpdateRefreshableTypes("userCharacterMissionV2s");
-            UpdateRefreshableTypes("userCharacterMissionV2Statuses");
-            UpdateRefreshableTypes("userBeginnerMissionV2s");
-            UpdateRefreshableTypes("userMissionStatuses");
-            UpdateRefreshableTypes("userHonorMissions");
+            UpdateRefreshableTypes(new[]
+            {
+                nameof(SuiteUser.userCards),
+                nameof(SuiteUser.userDecks),
+                nameof(SuiteUser.userUnitEpisodeStatuses),
+                nameof(SuiteUser.userCharacterMissionV2s),
+                nameof(SuiteUser.userCharacterMissionV2Statuses),
+                nameof(SuiteUser.userBeginnerMissionV2s),
+                nameof(SuiteUser.userMissionStatuses),
+                nameof(SuiteUser.userHonorMissions)
+            });
+
         }
 
         if (newStatus == "end")
         {
-            Data.userTutorial.tutorialEndAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            Data.userTutorial.tutorialEndAt = UserManager.Now;
         }
 
-        UpdateRefreshableTypes("userTutorial");
+        UpdateRefreshableType(nameof(SuiteUser.userTutorial));
     }
 
-    /// <summary>cardEpisodes.json 的缓存</summary>
+    /// <summary>
+    /// cardEpisodes.json 的缓存, TODO: 使用 sqlite
+    /// </summary>
     private static JsonArray? _cardEpisodesCache;
     private static JsonArray? _musicDifficultiesCache;
     private static JsonArray? _boostsCache;
@@ -490,7 +517,7 @@ public class GameUser
 
     public UserCard AddCard(int cardId)
     {
-        var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var currentTime = UserManager.Now;
         var episodeIds = GetCardEpisodeIds(cardId);
         long userId = Data.userGamedata?.userId ?? 0;
 
@@ -529,18 +556,16 @@ public class GameUser
         };
 
         Data.userCards ??= [];
-        if (!Data.userCards.Any(c => c.cardId == cardId))
+        if (Data.userCards.All(c => c.cardId != cardId))
             Data.userCards.Add(newCard);
 
-        UpdateRefreshableTypes("userCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
         return newCard;
     }
 
-    // ===================== Gacha Mixin =====================
-
     public UserGachaResponse ExecuteGacha(int gachaId, int gachaBehaviorId, bool isPriorityUsePaidJewel)
     {
-        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var now = UserManager.Now;
         var gacha = FindGacha(gachaId);
         var behavior = FindGachaBehavior(gacha, gachaBehaviorId);
         var spinCount = GetGachaSpinCount(behavior, gachaBehaviorId);
@@ -573,9 +598,12 @@ public class GameUser
         var userGacha = UpsertUserGacha(gachaId, gachaBehaviorId, now);
         var obtainGachaCeilItems = GrantGachaCeilItem(gacha, gachaId, spinCount);
 
-        UpdateRefreshableTypes("userCharacterMissionV2s");
-        UpdateRefreshableTypes("userCharacterMissionV2Statuses");
-        UpdateRefreshableTypes("userHonorMissions");
+        UpdateRefreshableTypes(new []
+        {
+            nameof(SuiteUser.userCharacterMissionV2s),
+            nameof(SuiteUser.userCharacterMissionV2Statuses),
+            nameof(SuiteUser.userHonorMissions)
+        });
 
         return new UserGachaResponse
         {
@@ -614,7 +642,7 @@ public class GameUser
             .ThenBy(w => w.rateChoiceGachaWishId)
             .ThenBy(w => w.gachaDetailId)
             .ToArray();
-        UpdateRefreshableTypes("userRateChoiceGachaWishes");
+        UpdateRefreshableType(nameof(SuiteUser.userRateChoiceGachaWishes));
     }
 
     public UserGachaCeilExchangeResponse ExchangeGachaCeilItem(UserGachaCeilExchangeRequest request)
@@ -760,7 +788,7 @@ public class GameUser
                 Data.userChargedCurrency.paid = Math.Max(0, Math.Max(0, Data.userChargedCurrency.paid) - remainingCost);
         }
 
-        UpdateRefreshableTypes("userChargedCurrency");
+        UpdateRefreshableType(nameof(SuiteUser.userChargedCurrency));
         return Math.Max(0, Data.userChargedCurrency.paid) + Math.Max(0, Data.userChargedCurrency.free);
     }
 
@@ -768,7 +796,7 @@ public class GameUser
     {
         Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
         Data.userChargedCurrency.paid = Math.Max(0, Math.Max(0, Data.userChargedCurrency.paid) - quantity);
-        UpdateRefreshableTypes("userChargedCurrency");
+        UpdateRefreshableType(nameof(SuiteUser.userChargedCurrency));
         return Data.userChargedCurrency.paid;
     }
 
@@ -792,7 +820,7 @@ public class GameUser
 
         ticket.quantity = Math.Max(0, ticket.quantity - quantity);
         Data.userGachaTickets = tickets.OrderBy(t => t.gachaTicketId).ToArray();
-        UpdateRefreshableTypes("userGachaTickets");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaTickets));
         return ticket.quantity;
     }
 
@@ -971,7 +999,7 @@ public class GameUser
         }
 
         existing.duplicateCount++;
-        UpdateRefreshableTypes("userCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
         return false;
     }
 
@@ -1008,8 +1036,8 @@ public class GameUser
             return [];
 
         Data.userCostume3dStatuses = statuses.OrderBy(s => s.costume3dId).ToArray();
-        UpdateRefreshableTypes("userCostume3dStatuses");
-        UpdateRefreshableTypes("userCostume3dShopItems");
+        UpdateRefreshableType(nameof(SuiteUser.userCostume3dStatuses));
+        UpdateRefreshableType(nameof(SuiteUser.userCostume3dShopItems));
         return obtained.ToArray();
     }
 
@@ -1026,12 +1054,12 @@ public class GameUser
         statuses.Add(new UserCostume3DStatus
         {
             costume3dId = costume3dId,
-            obtainedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            obtainedAt = UserManager.Now,
             status = "available"
         });
         Data.userCostume3dStatuses = statuses.OrderBy(s => s.costume3dId).ToArray();
-        UpdateRefreshableTypes("userCostume3dStatuses");
-        UpdateRefreshableTypes("userCostume3dShopItems");
+        UpdateRefreshableType(nameof(SuiteUser.userCostume3dStatuses));
+        UpdateRefreshableType(nameof(SuiteUser.userCostume3dShopItems));
     }
 
     private static int[] FindCardCostume3dIds(int cardId)
@@ -1072,7 +1100,7 @@ public class GameUser
         userGacha.count++;
         userGacha.lastSpinAt = now;
         Data.userGachas = gachas.ToArray();
-        UpdateRefreshableTypes("userGachas");
+        UpdateRefreshableType(nameof(SuiteUser.userGachas));
         return userGacha;
     }
 
@@ -1097,7 +1125,7 @@ public class GameUser
 
         item.quantity += quantity;
         Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
-        UpdateRefreshableTypes("userGachaCeilItems");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaCeilItems));
 
         return
         [
@@ -1131,7 +1159,7 @@ public class GameUser
 
         item.quantity += quantity;
         Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
-        UpdateRefreshableTypes("userGachaCeilItems");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaCeilItems));
     }
 
     private static int ResolveGachaCeilItemId(JsonObject? gacha, int gachaId)
@@ -1229,7 +1257,7 @@ public class GameUser
         }
 
         Data.userGachaCeilExchanges = exchanges.OrderBy(e => e.gachaCeilExchangeId).ToArray();
-        UpdateRefreshableTypes("userGachaCeilExchanges");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaCeilExchanges));
     }
 
     private void UpsertUserGachaCeilExchangeSubstituteCost(int gachaCeilExchangeId, int usedCount)
@@ -1248,7 +1276,7 @@ public class GameUser
 
         cost.substituteCostUsedCount += usedCount;
         Data.userGachaCeilExchangeSubstituteCosts = costs.OrderBy(c => c.gachaCeilExchangeId).ToArray();
-        UpdateRefreshableTypes("userGachaCeilExchangeSubstituteCosts");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaCeilExchangeSubstituteCosts));
     }
 
     private void ConsumeGachaCeilItem(int gachaCeilItemId, int quantity)
@@ -1271,7 +1299,7 @@ public class GameUser
 
         item.quantity = Math.Max(0, item.quantity - quantity);
         Data.userGachaCeilItems = ceilItems.OrderBy(i => i.gachaCeilItemId).ToArray();
-        UpdateRefreshableTypes("userGachaCeilItems");
+        UpdateRefreshableType(nameof(SuiteUser.userGachaCeilItems));
     }
 
     public void ExchangeCards(UserCard[]? userCards)
@@ -1306,10 +1334,8 @@ public class GameUser
         }
 
         Data.userCards = cards.OrderBy(c => c.cardId).ToList();
-        UpdateRefreshableTypes("userCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
     }
-
-    // ===================== Inherit Mixin =====================
 
     public string SetUserInherit(string password)
     {
@@ -1319,7 +1345,7 @@ public class GameUser
         NotSuite.InheritPassword = password;
 
         Data.userInherit = new UserInherit { inheritId = inheritId };
-        UpdateRefreshableTypes("userInherit");
+        UpdateRefreshableType(nameof(SuiteUser.userInherit));
         return inheritId;
     }
 
@@ -1337,11 +1363,11 @@ public class GameUser
 
     public bool VerifyInherit(string inheritId, string password)
     {
-        return NotSuite.InheritId == inheritId
-            && NotSuite.InheritPassword == password;
+        return !String.IsNullOrEmpty(inheritId) &&
+               !String.IsNullOrEmpty(password) && 
+               NotSuite.InheritId == inheritId &&
+               NotSuite.InheritPassword == password;
     }
-
-    // ===================== Topic Mixin =====================
 
     public void RemoveTopic(int topicId)
     {
@@ -1350,24 +1376,130 @@ public class GameUser
             .Where(t => t.topicId != topicId).ToArray();
     }
 
-    // ===================== Special Story Mixin =====================
+    public void ReadEpisode(int specialEpisodeId) =>
+        ReadStoryEpisode("special_story", specialEpisodeId);
 
-    public void ReadEpisode(int specialEpisodeId)
+    public void ReadStoryEpisode(string storyType, int episodeId, bool isNotSkipped = false)
     {
-        if (Data.userSpecialEpisodeStatuses == null) return;
-
-        foreach (var status in Data.userSpecialEpisodeStatuses)
+        switch (storyType)
         {
-            if (status.episodeId == specialEpisodeId)
+            case "unit_story":
+                MarkEpisodeRead(Data.userUnitEpisodeStatuses, episodeId,
+                    nameof(SuiteUser.userUnitEpisodeStatuses), isNotSkipped);
+                break;
+            case "special_story":
+                MarkEpisodeRead(Data.userSpecialEpisodeStatuses, episodeId,
+                    nameof(SuiteUser.userSpecialEpisodeStatuses), isNotSkipped);
+                break;
+            case "character_profile_story":
+                MarkEpisodeRead(Data.userCharacterProfileEpisodeStatuses, episodeId,
+                    nameof(SuiteUser.userCharacterProfileEpisodeStatuses), isNotSkipped);
+                break;
+            case "event_story":
+                MarkEventEpisodeRead(Data.userEventEpisodeStatuses, episodeId,
+                    nameof(SuiteUser.userEventEpisodeStatuses), isNotSkipped);
+                break;
+            case "archive_event_story":
+                MarkArchiveEventEpisodeRead(Data.userArchiveEventEpisodeStatuses, episodeId,
+                    nameof(SuiteUser.userArchiveEventEpisodeStatuses), isNotSkipped);
+                break;
+            case "card_story":
+                MarkCardEpisodeRead(episodeId, isNotSkipped);
+                break;
+        }
+    }
+
+    public void ReleaseStoryEpisode(string storyType, int episodeId)
+    {
+        if (storyType == "card_story")
+            ReleaseCardEpisode(episodeId);
+    }
+
+    private void MarkEpisodeRead(UserEpisodeStatus[]? statuses, int episodeId, string fieldName, bool isNotSkipped)
+    {
+        if (statuses == null) return;
+
+        foreach (var status in statuses)
+        {
+            if (status.episodeId != episodeId) continue;
+
+            status.status = "already_read";
+            status.isNotSkipped = isNotSkipped;
+            UpdateRefreshableType(fieldName);
+            return;
+        }
+    }
+
+    private void MarkEventEpisodeRead(UserEventEpisodeStatus[]? statuses, int episodeId, string fieldName, bool isNotSkipped)
+    {
+        if (statuses == null) return;
+
+        foreach (var status in statuses)
+        {
+            if (status.episodeId != episodeId) continue;
+
+            status.status = "already_read";
+            status.isNotSkipped = isNotSkipped;
+            UpdateRefreshableType(fieldName);
+            return;
+        }
+    }
+
+    private void MarkArchiveEventEpisodeRead(UserArchiveEventEpisodeStatus[]? statuses, int episodeId, string fieldName, bool isNotSkipped)
+    {
+        if (statuses == null) return;
+
+        foreach (var status in statuses)
+        {
+            if (status.episodeId != episodeId) continue;
+
+            status.status = "already_read";
+            status.isNotSkipped = isNotSkipped;
+            UpdateRefreshableType(fieldName);
+            return;
+        }
+    }
+
+    private void MarkCardEpisodeRead(int cardEpisodeId, bool isNotSkipped)
+    {
+        if (Data.userCards == null) return;
+
+        foreach (var card in Data.userCards)
+        {
+            if (card.episodes == null) continue;
+
+            foreach (var episode in card.episodes)
             {
-                status.status = "already_read";
-                UpdateRefreshableTypes("userSpecialEpisodeStatuses");
+                if (episode.cardEpisodeId != cardEpisodeId) continue;
+
+                episode.scenarioStatus = "already_read";
+                episode.scenarioStatusReasons = [];
+                episode.isNotSkipped = isNotSkipped;
+                UpdateRefreshableType(nameof(SuiteUser.userCards));
                 return;
             }
         }
     }
 
-    // ===================== Present Mixin =====================
+    private void ReleaseCardEpisode(int cardEpisodeId)
+    {
+        if (Data.userCards == null) return;
+
+        foreach (var card in Data.userCards)
+        {
+            if (card.episodes == null) continue;
+
+            foreach (var episode in card.episodes)
+            {
+                if (episode.cardEpisodeId != cardEpisodeId) continue;
+
+                episode.scenarioStatus = "released";
+                episode.scenarioStatusReasons = [];
+                UpdateRefreshableType(nameof(SuiteUser.userCards));
+                return;
+            }
+        }
+    }
 
     public List<UserPresentData> ReceivePresent(string[] presentIds)
     {
@@ -1399,7 +1531,7 @@ public class GameUser
             resourceId = present.resourceId,
             resourceLevel = present.resourceLevel,
             resourceQuantity = present.resourceQuantity,
-            receivedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+            receivedAt = UserManager.Now,
             reason = present.reason
         });
 
@@ -1411,15 +1543,13 @@ public class GameUser
         return NotSuite.PresentHistories;
     }
 
-    // ===================== Profile Mixin =====================
-
     public void UpdateProfile(UserProfile newProfile)
     {
         if (Data.userProfile == null) return;
         // 保留原 userId
         newProfile.userId = Data.userProfile.userId;
         Data.userProfile = newProfile;
-        UpdateRefreshableTypes("userProfile");
+        UpdateRefreshableType(nameof(SuiteUser.userProfile));
     }
 
     public void MergeUserGamedata(UserGamedata patch)
@@ -1427,7 +1557,7 @@ public class GameUser
         if (Data.userGamedata == null)
         {
             Data.userGamedata = patch;
-            UpdateRefreshableTypes("userGamedata");
+            UpdateRefreshableType(nameof(SuiteUser.userGamedata));
             return;
         }
 
@@ -1443,26 +1573,18 @@ public class GameUser
         if (patch.lastLoginAt != 0) current.lastLoginAt = patch.lastLoginAt;
         current.customProfileId = patch.customProfileId;
 
-        UpdateRefreshableTypes("userGamedata");
+        UpdateRefreshableType(nameof(SuiteUser.userGamedata));
     }
 
     public void UpdateUserGamedata(UserGamedata newGamedata) =>
         MergeUserGamedata(newGamedata);
-
-    // ===================== Custom Profile Mixin =====================
-
-    private void EnsureCustomProfileArrays()
-    {
-        Data.userCustomProfiles ??= [];
-        Data.userCustomProfileCards ??= [];
-        Data.userCustomProfileResourceUsages ??= [];
-    }
+    
 
     public void SetCurrentCustomProfile(int? customProfileId)
     {
         Data.userGamedata ??= new UserGamedata { userId = GetUserId() };
         Data.userGamedata.customProfileId = customProfileId;
-        UpdateRefreshableTypes("userGamedata");
+        UpdateRefreshableType(nameof(SuiteUser.userGamedata));
     }
 
     public void SaveCustomProfile(
@@ -1470,8 +1592,6 @@ public class GameUser
         string? name,
         List<UserCustomProfileCardOrder>? customProfileCardOrders)
     {
-        EnsureCustomProfileArrays();
-
         var profiles = Data.userCustomProfiles!.ToList();
         var profile = profiles.FirstOrDefault(p => p.customProfileId == customProfileId);
         if (profile == null)
@@ -1504,8 +1624,8 @@ public class GameUser
         Data.userCustomProfileCards = cards.ToArray();
         UpdateCustomProfileResourceUsages(customProfileId);
 
-        UpdateRefreshableTypes("userCustomProfiles");
-        UpdateRefreshableTypes("userCustomProfileCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfiles));
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfileCards));
     }
 
     public void SaveCustomProfileCard(
@@ -1513,7 +1633,6 @@ public class GameUser
         int customProfileCardId,
         UserSaveCustomProfileCardRequest request)
     {
-        EnsureCustomProfileArrays();
         EnsureCustomProfileExists(customProfileId);
 
         var cards = Data.userCustomProfileCards!.ToList();
@@ -1547,13 +1666,11 @@ public class GameUser
 
         Data.userCustomProfileCards = cards.ToArray();
         UpdateCustomProfileResourceUsages(customProfileId);
-        UpdateRefreshableTypes("userCustomProfileCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfileCards));
     }
 
     public void DeleteCustomProfileCards(int customProfileId, int[] customProfileCardIds)
     {
-        EnsureCustomProfileArrays();
-
         var deleteIds = customProfileCardIds.ToHashSet();
         var cards = Data.userCustomProfileCards!
             .Where(c => c.customProfileId != customProfileId || !deleteIds.Contains(c.customProfileCardId))
@@ -1570,13 +1687,11 @@ public class GameUser
 
         Data.userCustomProfileCards = cards.ToArray();
         UpdateCustomProfileResourceUsages(customProfileId);
-        UpdateRefreshableTypes("userCustomProfileCards");
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfileCards));
     }
 
     public void UpdateCustomProfileResourceUsages(int customProfileId)
     {
-        EnsureCustomProfileArrays();
-
         var usageCounts = new Dictionary<int, int>();
         foreach (var card in Data.userCustomProfileCards!.Where(c => c.customProfileId == customProfileId))
         {
@@ -1605,7 +1720,7 @@ public class GameUser
             }));
 
         Data.userCustomProfileResourceUsages = usages.ToArray();
-        UpdateRefreshableTypes("userCustomProfileResourceUsages");
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfileResourceUsages));
     }
 
     private void EnsureCustomProfileExists(int customProfileId)
@@ -1620,10 +1735,8 @@ public class GameUser
             name = ""
         });
         Data.userCustomProfiles = profiles.ToArray();
-        UpdateRefreshableTypes("userCustomProfiles");
+        UpdateRefreshableType(nameof(SuiteUser.userCustomProfiles));
     }
-
-    // ===================== Shop Mixin =====================
 
     public void PurchaseShopItem(int shopId, int shopItemId)
     {
@@ -1690,7 +1803,7 @@ public class GameUser
 
         item.status = UserShopItem.STATUS_SOLD_OUT;
         shop.userShopItems = items.ToArray();
-        UpdateRefreshableTypes("userShops");
+        UpdateRefreshableType(nameof(SuiteUser.userShops));
     }
 
     private void ConsumeShopItemCosts(JsonArray costs)
@@ -1716,7 +1829,7 @@ public class GameUser
                     if (Data.userGamedata != null)
                     {
                         Data.userGamedata.coin = Math.Max(0, Data.userGamedata.coin - quantity);
-                        UpdateRefreshableTypes("userGamedata");
+                        UpdateRefreshableType(nameof(SuiteUser.userGamedata));
                     }
                     break;
                 case "jewel":
@@ -1745,7 +1858,7 @@ public class GameUser
 
         material.quantity = Math.Max(0, material.quantity - quantity);
         Data.userMaterials = materials.OrderBy(m => m.materialId).ToArray();
-        UpdateRefreshableTypes("userMaterials");
+        UpdateRefreshableType(nameof(SuiteUser.userMaterials));
     }
 
     private void ConsumeJewel(int quantity)
@@ -1762,7 +1875,7 @@ public class GameUser
         if (remainingCost > 0)
             Data.userChargedCurrency.paid = Math.Max(0, Data.userChargedCurrency.paid - remainingCost);
 
-        UpdateRefreshableTypes("userChargedCurrency");
+        UpdateRefreshableType(nameof(SuiteUser.userChargedCurrency));
     }
 
     private void ConsumeResource(string? resourceType, int resourceId, int quantity)
@@ -1779,7 +1892,7 @@ public class GameUser
                 if (Data.userGamedata != null)
                 {
                     Data.userGamedata.coin = Math.Max(0, Data.userGamedata.coin - quantity);
-                    UpdateRefreshableTypes("userGamedata");
+                    UpdateRefreshableType(nameof(SuiteUser.userGamedata));
                 }
                 break;
             case "jewel":
@@ -1882,7 +1995,7 @@ public class GameUser
 
         musics.Add(new UserMusic { musicId = musicId });
         Data.userMusics = musics.OrderBy(m => m.musicId).ToArray();
-        UpdateRefreshableTypes("userMusics");
+        UpdateRefreshableType(nameof(SuiteUser.userMusics));
     }
 
     private void GrantDefaultMusicVocals(int musicId)
@@ -1930,7 +2043,7 @@ public class GameUser
         Data.userMusicVocals = Data.userMusicVocals
             .OrderBy(v => v.musicVocalId)
             .ToList();
-        UpdateRefreshableTypes("userMusicVocals");
+        UpdateRefreshableType(nameof(SuiteUser.userMusicVocals));
     }
 
     // ===================== Live Mixin =====================
@@ -1949,10 +2062,10 @@ public class GameUser
             IsAuto = request.isAuto,
             MusicCategoryName = request.musicCategoryName,
             CustomMusicScoreId = request.customMusicScoreId,
-            CreatedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+            CreatedAt = UserManager.Now
         };
 
-        UpdateRefreshableTypes("userEventBreakTime");
+        UpdateRefreshableType(nameof(SuiteUser.userEventBreakTime));
         return new UserLive
         {
             userLiveId = userLiveId,
@@ -2079,7 +2192,7 @@ public class GameUser
         result.fullPerfectFlg = result.fullPerfectFlg || fullPerfect;
 
         Data.userMusicResults = results.ToArray();
-        UpdateRefreshableTypes("userMusicResults");
+        UpdateRefreshableType(nameof(SuiteUser.userMusicResults));
         return highScoreFlg;
     }
 
@@ -2111,7 +2224,7 @@ public class GameUser
         if (granted.Count > 0)
         {
             Data.userMusicAchievements = achievements.ToArray();
-            UpdateRefreshableTypes("userMusicAchievements");
+            UpdateRefreshableType(nameof(SuiteUser.userMusicAchievements));
         }
 
         return granted.ToArray();
@@ -2174,13 +2287,13 @@ public class GameUser
                 case "jewel":
                     Data.userChargedCurrency ??= new ChargedCurrency { paidUnitPrices = [] };
                     Data.userChargedCurrency.free += reward.quantity;
-                    UpdateRefreshableTypes("userChargedCurrency");
+                    UpdateRefreshableType(nameof(SuiteUser.userChargedCurrency));
                     break;
                 case "coin":
                     if (Data.userGamedata != null)
                     {
                         Data.userGamedata.coin += reward.quantity;
-                        UpdateRefreshableTypes("userGamedata");
+                        UpdateRefreshableType(nameof(SuiteUser.userGamedata));
                     }
                     break;
                 case "material":
@@ -2209,7 +2322,7 @@ public class GameUser
 
         material.quantity += quantity;
         Data.userMaterials = materials.ToArray();
-        UpdateRefreshableTypes("userMaterials");
+        UpdateRefreshableType(nameof(SuiteUser.userMaterials));
     }
 
     private void AddPracticeTicket(int practiceTicketId, int quantity)
@@ -2232,7 +2345,7 @@ public class GameUser
 
         ticket.quantity += quantity;
         Data.userPracticeTickets = tickets.ToArray();
-        UpdateRefreshableTypes("userPracticeTickets");
+        UpdateRefreshableType(nameof(SuiteUser.userPracticeTickets));
     }
 
     private void ConsumeBoost(int boostCount)
@@ -2241,8 +2354,8 @@ public class GameUser
             return;
 
         Data.userBoost.current = Math.Max(0, Data.userBoost.current - boostCount);
-        Data.userBoost.recoveryAt = (ulong)DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        UpdateRefreshableTypes("userBoost");
+        Data.userBoost.recoveryAt = (ulong)UserManager.Now;
+        UpdateRefreshableType(nameof(SuiteUser.userBoost));
     }
 
     private void MergeLiveCharacterArchiveVoiceGroups(IEnumerable<int>? groupIds)
@@ -2268,7 +2381,7 @@ public class GameUser
         }
 
         if (changed)
-            UpdateRefreshableTypes("userLiveCharacterArchiveVoice");
+            UpdateRefreshableType(nameof(SuiteUser.userLiveCharacterArchiveVoice));
     }
 
     private UserDeck? GetUserDeck(int? deckId)
@@ -2411,7 +2524,7 @@ public class GameUser
         mission.progress += livePoint.addNormalProgress;
         mission.achievedMissionIds ??= [];
         Data.userLiveMissions = missions.ToArray();
-        UpdateRefreshableTypes("userLiveMissions");
+        UpdateRefreshableType(nameof(SuiteUser.userLiveMissions));
     }
 
     private static string BuildScoreRank(int musicDifficultyId, int score)
@@ -2598,8 +2711,6 @@ public class GameUser
         return null;
     }
 
-    // ===================== 工具方法 =====================
-
     private static readonly Random Rng = new();
 
     private static string GenerateRandomString(int length)
@@ -2611,7 +2722,6 @@ public class GameUser
         return new string(result);
     }
 
-    /// <summary>深拷贝当前用户（MessagePack 序列化往返）</summary>
     public GameUser DeepClone()
     {
         var bytes = MessagePackSerializer.Serialize(Data);

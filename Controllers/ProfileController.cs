@@ -14,7 +14,7 @@ public class ProfileController : PrskController
     }
 
     /// <summary>
-    /// PUT /api/user/{userId}/profile
+    /// 更新玩家个人资料中的留言、Twitter ID 和头像显示信息。客户端在个人资料页离开或保存时检测到资料字段变化后提交，成功后合并返回的用户资源差异。
     /// </summary>
     [HttpPut("api/user/{userId}/profile")]
     public IActionResult HandleUserProfile(long userId, [FromBody] UserProfileRequest request)
@@ -34,21 +34,4 @@ public class ProfileController : PrskController
         });
     }
 
-    /// <summary>
-    /// PUT /api/user/{userId}
-    /// </summary>
-    [HttpPut("api/user/{userId}")]
-    public IActionResult HandleUserUpdate(long userId, [FromBody] UserGamedataUpdateRequest request)
-    {
-        if (request.userGamedata == null)
-            return BadRequest("Missing userGamedata");
-
-        var user = _users.GetUser(userId);
-        user.MergeUserGamedata(request.userGamedata);
-
-        return Ok(new SuiteUserCommonResponse
-        {
-            updatedResources = user.GetRefreshData()
-        });
-    }
 }

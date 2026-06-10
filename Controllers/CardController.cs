@@ -14,7 +14,7 @@ public class CardController : PrskController
     }
 
     /// <summary>
-    /// PUT /api/user/{userId}/card/?behavior=exchange
+    /// 执行等待室卡牌转换。客户端把确认转换的卡牌汇总成 `userCards` 发给服务端，请求成功后合并返回的用户资源差异，并刷新等待室显示。
     /// </summary>
     [HttpPut("api/user/{userId}/card")]
     [HttpPut("api/user/{userId}/card/")]

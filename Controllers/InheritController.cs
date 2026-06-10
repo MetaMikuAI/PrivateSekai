@@ -17,7 +17,7 @@ public class InheritController : PrskController
     }
 
     /// <summary>
-    /// GET /api/user/{userId}/restrict-info
+    /// 获取当前账号的设备转移限制信息。客户端在设置账号继承、绑定平台账号等继承相关入口前会先请求它，用返回结果决定确认弹窗中是否追加限制提示。
     /// </summary>
     [HttpGet("api/user/{userId}/restrict-info")]
     public IActionResult HandleRestrictInfo(long userId)
@@ -29,7 +29,7 @@ public class InheritController : PrskController
     }
 
     /// <summary>
-    /// PUT /api/user/{userId}/inherit
+    /// 设置 ID/password 引继码形式的账号继承信息。客户端提交用户输入的继承密码，服务端返回生成的 `inheritId` 和用户资源差异，客户端随后展示继承 ID 与密码给用户保存。
     /// </summary>
     [HttpPut("api/user/{userId}/inherit")]
     public IActionResult HandleSetInherit(long userId, [FromBody] UserInheritRequest request)
@@ -50,7 +50,7 @@ public class InheritController : PrskController
     }
 
     /// <summary>
-    /// POST /api/inherit/user/{inheritId}
+    /// 使用 ID/password 引继码查询或执行账号继承。客户端第一次请求通常用于预览目标账号并打开确认弹窗；用户确认后会再次请求并执行继承，成功后用返回的 `credential` 切换本地账号。
     /// </summary>
     [HttpPost("api/inherit/user/{inheritId}")]
     public IActionResult HandleInheritUser(string inheritId)
