@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using MessagePack;
 using PrivateSekai.Config;
 using PrivateSekai.Crypto;
@@ -631,8 +632,35 @@ public class GameUser
         return ticket.quantity;
     }
 
+    /// <summary>
+    /// 若存在 <c>template/gacha-test-cards.json</c>（如 <c>[1,2,3,...]</c>），抽卡时直接返回该列表，跳过随机逻辑。
+    /// </summary>
+    private static int[]? TryReadGachaTestCardIds()
+    {
+        var path = Path.Combine(ServerConfig.TemplatePath, "gacha-test-cards.json");
+        if (!File.Exists(path))
+            return null;
+
+        try
+        {
+            var cardIds = JsonSerializer.Deserialize<int[]>(File.ReadAllText(path));
+            if (cardIds == null || cardIds.Length == 0)
+                return null;
+
+            return cardIds.Where(id => id > 0).ToArray();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static int[] DrawGachaCards(MasterGacha? gacha, string? behaviorType, int spinCount)
     {
+        var testCardIds = TryReadGachaTestCardIds();
+        if (testCardIds != null)
+            return testCardIds;
+
         var cardIds = new int[spinCount];
         for (var i = 0; i < cardIds.Length; i++)
             cardIds[i] = DrawGachaCard(gacha);
