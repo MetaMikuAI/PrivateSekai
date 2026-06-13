@@ -57,6 +57,96 @@ public sealed class MasterDataManager
     public string? GetCardRarityType(int cardId) =>
         GetMasterCard(cardId)?.cardRarityType;
 
+    public int GetCardMaxLevel(int cardId, bool specialTrained)
+    {
+        var rarityType = GetCardRarityType(cardId);
+        if (rarityType == null)
+            return 1;
+
+        var rarity = _cache.GetTable<MasterCardRarity>("cardRarities")
+            .Rows
+            .FirstOrDefault(r => string.Equals(r.cardRarityType, rarityType, StringComparison.Ordinal));
+
+        if (rarity == null)
+            return 1;
+
+        return specialTrained && rarity.trainingMaxLevel.HasValue
+            ? rarity.trainingMaxLevel.Value
+            : rarity.maxLevel;
+    }
+
+    public int GetPracticeTicketExp(int practiceTicketId) =>
+        _cache.GetTable<MasterPracticeTicket>("practiceTickets", t => t.id)
+            .FindById(practiceTicketId)?.exp ?? 0;
+
+    public int GetCardLevelFromTotalExp(int totalExp, int maxLevel)
+    {
+        var levels = _cache.GetTable<MasterLevel>("levels")
+            .Rows
+            .Where(l => string.Equals(l.levelType, "card", StringComparison.Ordinal) && l.level <= maxLevel)
+            .OrderBy(l => l.level);
+
+        var level = 1;
+        foreach (var row in levels)
+        {
+            if (row.totalExp > totalExp)
+                break;
+
+            level = row.level;
+        }
+
+        return level;
+    }
+
+    public int GetCardLevelTotalExp(int level)
+    {
+        if (level <= 1)
+            return 0;
+
+        return _cache.GetTable<MasterLevel>("levels")
+            .Rows
+            .FirstOrDefault(l => string.Equals(l.levelType, "card", StringComparison.Ordinal) && l.level == level)
+            ?.totalExp ?? 0;
+    }
+
+    public int GetCardLevelMaxTotalExp(int maxLevel) =>
+        GetCardLevelTotalExp(maxLevel);
+
+    public MasterLessonCost[] GetMasterLessonCosts(IEnumerable<int>? costIds)
+    {
+        if (costIds == null)
+            return [];
+
+        var requested = costIds.Where(id => id > 0).ToHashSet();
+        if (requested.Count == 0)
+            return [];
+
+        return _cache.GetTable<MasterLesson>("masterLessons")
+            .Rows
+            .SelectMany(row => row.costs ?? [])
+            .Where(cost => requested.Contains(cost.id))
+            .ToArray();
+    }
+
+    public MasterLessonReward[] GetMasterLessonRewards(int cardId, int beforeMasterRank, int afterMasterRank)
+    {
+        if (afterMasterRank <= beforeMasterRank)
+            return [];
+
+        return _cache.GetTable<MasterLessonReward>("masterLessonRewards", r => r.id)
+            .Rows
+            .Where(reward =>
+                reward.cardId == cardId &&
+                reward.masterRank > beforeMasterRank &&
+                reward.masterRank <= afterMasterRank)
+            .OrderBy(reward => reward.masterRank)
+            .ToArray();
+    }
+
+    public MasterBeginnerMissionV2? GetBeginnerMissionV2(int missionId) =>
+        _cache.GetTable<MasterBeginnerMissionV2>("beginnerMissionV2s", m => m.id)
+            .FindById(missionId);
+
     public int[] GetCardCostume3dIds(int cardId) =>
         _cache.GetTable<MasterCardCostume3D>("cardCostume3ds")
             .Rows

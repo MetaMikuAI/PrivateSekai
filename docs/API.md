@@ -418,7 +418,7 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，Episode，已读，奖励，用户资源
 
-提交一个故事 episode 已读。客户端把故事类型和 episode ID 放入 path，不发送请求体；成功后合并返回的用户资源差异，并读取可能获得的故事奖励资源。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的 story episode 完成逻辑。
+提交一个故事 episode 已读。客户端把故事类型和 episode ID 放入 path，不发送请求体；成功后合并返回的用户资源差异，并读取可能获得的故事奖励资源。
 
 ### 请求参数
 
@@ -464,14 +464,14 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，卡牌故事，解锁，消耗，用户资源
 
-提交故事 episode 解锁消耗。客户端主要在卡牌 side story 的锁定 episode 解锁流程中请求，用指定消耗类型解锁后续故事；成功后合并资源差异并继续读故事确认流程。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的卡牌剧情解锁逻辑。
+提交故事 episode 解锁消耗。客户端主要在卡牌 side story 的锁定 episode 解锁流程中请求，用指定消耗类型解锁后续故事；成功后合并资源差异并继续读故事确认流程。
 
 ### 请求参数
 
 - Path `userId`: 当前用户 ID。
 - Path `storyType`: 故事类型；当前确认的主要使用场景为 `card_story`。
 - Path `episodeId`: 要解锁的 episode ID。
-- Body `cardEpisodeReleaseCostType`: 解锁消耗类型，已确认有 `common_material` 和 `card_episode_release_ticket`。dump-5 样本实际发送 `common_material`。
+- Body `cardEpisodeReleaseCostType`: 解锁消耗类型，已确认有 `common_material` 和 `card_episode_release_ticket`。已确认样本实际发送 `common_material`。
 
 ### 返回字段
 
@@ -504,7 +504,7 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，播放日志，跳过，自动播放，奖励
 
-提交故事播放日志。客户端在 story 播放结束后把本次播放行为信息提交给服务端，包括是否跳过、是否自动播放、页数、连续播放状态和故事内 MV/音乐播放信息；成功后合并用户资源并处理可能获得的资源结果。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的播放日志处理逻辑。
+提交故事播放日志。客户端在 story 播放结束后把本次播放行为信息提交给服务端，包括是否跳过、是否自动播放、页数、连续播放状态和故事内 MV/音乐播放信息；成功后合并用户资源并处理可能获得的资源结果。
 
 ### 请求参数
 
@@ -527,8 +527,8 @@
 
 ### 返回字段
 
-- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据。dump-5 的卡牌 side story 日志样本只返回通用刷新字段，没有再次返回 `userCards` 或奖励资源。
-- `userObtainResourceResults`: 本次日志提交后获得的资源结果数组；元素包含 `obtainReason` 和 `userResources`。dump-5 的卡牌 side story 日志样本为空数组。
+- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据。已确认的卡牌 side story 日志样本只返回通用刷新字段，没有再次返回 `userCards` 或奖励资源。
+- `userObtainResourceResults`: 本次日志提交后获得的资源结果数组；元素包含 `obtainReason` 和 `userResources`。已确认的卡牌 side story 日志样本为空数组。
 
 ### 客户端请求时机
 
@@ -806,6 +806,183 @@
 - `Sekai.PutUserCardExchangeAPI.OnCallBack`: 确认成功后合并 `response.updatedResources`。
 - `Sekai.ScreenLayerWaitingRoom.OnClickConfirmOK`: 等待室确认转换后构造 request 并执行 API。
 - `Sekai.ScreenLayerWaitingRoom.OnFinishedPutUserCardExchangeAPI`: 转换成功后显示结果弹窗，并刷新等待室状态。
+
+## POST `/api/user/{userId}/card/{cardId}/practice-ticket`
+
+> 审计版本: jp-6.5.5
+> 关键词：卡牌，练习，经验，练习券
+
+使用练习券提升指定卡牌经验。客户端把目标卡牌 ID 放入 path，把实际消耗的练习券列表放入 `costs`，请求成功后播放经验增长结果并合并用户资源差异。
+
+### 请求参数
+
+- Path `userId`: 当前用户 ID。
+- Path `cardId`: 要提升经验的卡牌 ID。
+- Body `costs`: `UserResource[]`，本次消耗的练习券资源列表。
+- Body `costs[].resourceType`: 固定为 `practice_ticket`。
+- Body `costs[].resourceId`: 练习券 ID。
+- Body `costs[].resourceLevel`: 资源等级，已确认样本为 `0`。
+- Body `costs[].quantity`: 消耗数量。
+
+### 返回字段
+
+- `updateExpResult`: 卡牌经验变化结果。
+- `updateExpResult.beforeTotalExp`: 请求前卡牌总经验。
+- `updateExpResult.afterTotalExp`: 请求后卡牌总经验。
+- `updateExpResult.beforeExp`: 请求前当前等级内经验。
+- `updateExpResult.afterExp`: 请求后当前等级内经验。
+- `updateExpResult.beforeLevel`: 请求前卡牌等级。
+- `updateExpResult.afterLevel`: 请求后卡牌等级。
+- `updatedResources`: `SuiteUser` 局部更新数据。客户端成功后会合并到本地用户数据，关注 `userCards`、`userPracticeTickets` 和相关任务状态。
+
+### 客户端请求时机
+
+目前确认有这些时机：
+
+1. 卡牌练习界面确认使用练习券后请求。
+   - 客户端根据选择数量构造 `costs`。
+   - 请求成功后合并 `updatedResources`。
+   - 随后使用 `updateExpResult` 播放等级和经验增长结果。
+
+### 客户端切入点
+
+- `Sekai.PostUserCardPracticeTicketAPI.Execute`: 确认 path 为 `user/{userId}/card/{cardId}/practice-ticket`，method 为 POST，request 为 `UserCardPracticeTicketRequest`，response 为 `UserCardPracticeTicketResponse`。
+- `Sekai.UserCardPracticeTicketRequest`: 确认 request body 字段为 `costs`。
+- `Sekai.UserCardPracticeTicketResponse`: 确认 response 字段为 `updateExpResult` 和 `updatedResources`。
+
+## POST `/api/user/{userId}/card/{cardId}/master-lesson`
+
+> 审计版本: jp-6.5.5
+> 关键词：卡牌，Master Rank，Master Lesson，奖励
+
+提升指定卡牌的 Master Rank。客户端把目标卡牌 ID 放入 path，把确认消耗的 `masterLessonCostIds` 放入 body；请求成功后合并用户资源差异，并展示本次获得的 Master Lesson 奖励。
+
+### 请求参数
+
+- Path `userId`: 当前用户 ID。
+- Path `cardId`: 要提升 Master Rank 的卡牌 ID。
+- Body `masterLessonCostIds`: `int[]`，本次消耗的 Master Lesson cost ID 列表。
+
+### 返回字段
+
+- `obtainedRewards`: 本次 Master Lesson 发放的奖励数组。
+- `obtainedRewards[].masterLessonRewardId`: Master Lesson 奖励 ID。
+- `obtainedRewards[].obtainRewards`: `UserResource[]`，该奖励 ID 对应的获得资源。
+- `updatedResources`: `SuiteUser` 局部更新数据。客户端成功后会合并到本地用户数据，关注 `userCards`、消耗素材和获得服装等资源。
+
+### 客户端请求时机
+
+目前确认有这些时机：
+
+1. 卡牌 Master Lesson 确认消耗后请求。
+   - 客户端根据目标卡牌、目标 Master Rank 和选择消耗构造 `masterLessonCostIds`。
+   - 请求成功后合并 `updatedResources`。
+   - 随后用 `obtainedRewards` 展示获得奖励，并刷新卡牌培养状态。
+
+### 客户端切入点
+
+- `Sekai.PostUserCardMasterLessonAPI.Execute`: 确认 path 为 `user/{userId}/card/{cardId}/master-lesson`，method 为 POST，request 为 `PostUserCardMasterLessonAPIRequest`，response 为 `UserCardMasterLessonResponse`。
+- `Sekai.PostUserCardMasterLessonAPIRequest`: 确认 request body 字段为 `masterLessonCostIds`。
+- `Sekai.UserCardMasterLessonResponse`: 确认 response 字段为 `obtainedRewards` 和 `updatedResources`。
+
+## PUT `/api/user/{userId}/card/{cardId}?behavior=special_training`
+
+> 审计版本: jp-6.5.5
+> 关键词：卡牌，特训，状态，立绘
+
+提交指定卡牌的特训状态。客户端把目标卡牌 ID 放入 path，把特训状态放入 body；请求成功后合并用户资源差异，并进入特训完成后的卡牌展示流程。
+
+### 请求参数
+
+- Path `userId`: 当前用户 ID。
+- Path `cardId`: 要更新特训状态的卡牌 ID。
+- Query `behavior`: 固定为 `special_training`。
+- Body `specialTrainingStatus`: 特训状态，已确认样本为 `done`。
+
+### 返回字段
+
+- `updatedResources`: `SuiteUser` 局部更新数据。客户端成功后会合并到本地用户数据，关注 `userCards`。
+
+### 客户端请求时机
+
+目前确认有这些时机：
+
+1. 卡牌特训确认完成后请求。
+   - 客户端发送 `specialTrainingStatus`。
+   - 请求成功后合并 `updatedResources`。
+   - 随后刷新卡牌详情和特训后展示状态。
+
+### 客户端切入点
+
+- `Sekai.PutUserCardSpecialTrainingAPI.Execute`: 确认 path 为 `user/{userId}/card/{cardId}?behavior=special_training`，method 为 PUT，request 为 `UserCardSpecialTrainingRequest`，response 为 `SuiteUserCommonResponse`。
+- `Sekai.UserCardSpecialTrainingRequest`: 确认 request body 字段为 `specialTrainingStatus`。
+
+## PUT `/api/user/{userId}/card/{cardId}?behavior=set_default_image`
+
+> 审计版本: jp-6.5.5
+> 关键词：卡牌，默认立绘，特训立绘，显示
+
+设置指定卡牌的默认显示立绘。客户端把目标卡牌 ID 放入 path，把目标立绘类型放入 body；请求成功后合并用户资源差异，并刷新卡牌详情显示。
+
+### 请求参数
+
+- Path `userId`: 当前用户 ID。
+- Path `cardId`: 要更新默认立绘的卡牌 ID。
+- Query `behavior`: 固定为 `set_default_image`。
+- Body `defaultImage`: 默认立绘类型，已确认样本包括 `original` 和 `special_training`。
+
+### 返回字段
+
+- `updatedResources`: `SuiteUser` 局部更新数据。客户端成功后会合并到本地用户数据，关注 `userCards`。
+
+### 客户端请求时机
+
+目前确认有这些时机：
+
+1. 卡牌详情中切换默认显示立绘后请求。
+   - 客户端发送 `defaultImage`。
+   - 请求成功后合并 `updatedResources`。
+   - 随后刷新当前卡牌详情图像状态。
+
+### 客户端切入点
+
+- `Sekai.PutUserCardDefaultImageAPI.Execute`: 确认 path 为 `user/{userId}/card/{cardId}?behavior=set_default_image`，method 为 PUT，request 为 `UserCardDefaultImageRequest`，response 为 `SuiteUserCommonResponse`。
+- `Sekai.UserCardDefaultImageRequest`: 确认 request body 字段为 `defaultImage`。
+
+## PUT `/api/user/{userId}/mission/beginner_mission_v2`
+
+> 审计版本: jp-6.5.5
+> 关键词：任务，新手任务，领取，奖励
+
+领取 Beginner Mission V2 任务奖励。客户端把一个或多个任务 ID 放入 `missionIds`，请求成功后合并用户资源差异，并用返回的奖励列表展示领取结果。
+
+### 请求参数
+
+- Path `userId`: 当前用户 ID。
+- Body `missionIds`: `int[]`，本次领取奖励的 Beginner Mission V2 任务 ID 列表。
+- Body `eventMissionSelectableRewardId`: 事件任务可选奖励 ID；该 mission type 的已确认样本为 `0`。
+- Body `isClosedEventMissionSelectableReward`: 是否关闭事件任务可选奖励；该 mission type 的已确认样本为 `false`。
+
+### 返回字段
+
+- `updatedResources`: `SuiteUser` 局部更新数据。客户端成功后会合并到本地用户数据，关注 `userBeginnerMissionV2s`、`userMissionStatuses` 和奖励资源。
+- `obtainedRewards`: `UserResource[]`，本次领取获得的奖励资源。
+
+### 客户端请求时机
+
+目前确认有这些时机：
+
+1. Mission 界面领取 Beginner Mission V2 奖励时请求。
+   - 客户端把待领取任务 ID 放入 `missionIds`。
+   - 请求成功后合并 `updatedResources`。
+   - 随后展示 `obtainedRewards`，并刷新任务列表状态。
+
+### 客户端切入点
+
+- `Sekai.PutUserMissionReceiveAPI.Execute`: 确认 mission receive API 会按 `MissionType` 拼出 `user/{userId}/mission/{missionType}`，method 为 PUT。
+- `Sekai.MissionType`: 确认 mission type 包括 `beginner_mission_v2`。
+- `Sekai.UserMissionReceiveRequest`: 确认 request body 字段为 `missionIds`、`eventMissionSelectableRewardId`、`isClosedEventMissionSelectableReward`。
+- `Sekai.UserMissionReceiveResponse`: 确认 response 字段为 `updatedResources` 和 `obtainedRewards`。
 
 ## PUT `/api/user/{userId}/custom-profile/{customProfileId}`
 

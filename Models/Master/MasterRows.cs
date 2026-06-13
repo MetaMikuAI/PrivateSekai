@@ -6,6 +6,14 @@ public sealed class MasterCard
     public string? cardRarityType { get; set; }
 }
 
+public sealed class MasterCardRarity
+{
+    public string? cardRarityType { get; set; }
+    public int maxLevel { get; set; }
+    public int? trainingMaxLevel { get; set; }
+    public int maxSkillLevel { get; set; }
+}
+
 public sealed class MasterCardEpisode
 {
     public int id { get; set; }
@@ -27,6 +35,55 @@ public sealed class MasterConfigRow
 {
     public string? configKey { get; set; }
     public string? value { get; set; }
+}
+
+public sealed class MasterLevel
+{
+    public int id { get; set; }
+    public string? levelType { get; set; }
+    public int level { get; set; }
+    public int totalExp { get; set; }
+}
+
+public sealed class MasterPracticeTicket
+{
+    public int id { get; set; }
+    public int exp { get; set; }
+}
+
+public sealed class MasterLesson
+{
+    public string? cardRarityType { get; set; }
+    public int masterRank { get; set; }
+    public MasterLessonCost[]? costs { get; set; }
+}
+
+public sealed class MasterLessonCost
+{
+    public int id { get; set; }
+    public string? resourceType { get; set; }
+    public int resourceId { get; set; }
+    public int quantity { get; set; }
+}
+
+public sealed class MasterLessonReward
+{
+    public int id { get; set; }
+    public int cardId { get; set; }
+    public int masterRank { get; set; }
+    public int resourceBoxId { get; set; }
+}
+
+public sealed class MasterBeginnerMissionV2
+{
+    public int id { get; set; }
+    public int requirement { get; set; }
+    public MasterMissionReward[]? rewards { get; set; }
+}
+
+public sealed class MasterMissionReward
+{
+    public int resourceBoxId { get; set; }
 }
 
 public sealed class MasterCardCostume3D

@@ -61,6 +61,7 @@ public class GameUser
     private const string CardEpisodeReleaseCostTypeTicket = "card_episode_release_ticket";
     private const string CardEpisodeReleaseTicketMaterialIdConfig = "card_episode_release_ticket_material_id";
     private const string CardEpisodeReleaseCostQuantityConfig = "card_episode_release_cost_quantity";
+    private const string BeginnerMissionV2Type = "beginner_mission_v2";
     
     public GameUser(SuiteUser? data = null)
     {
@@ -1075,6 +1076,245 @@ public class GameUser
         UpdateRefreshableType(nameof(SuiteUser.userCards));
     }
 
+    public UserCardPracticeTicketResponse PracticeCardWithTickets(int cardId, UserResource[]? costs)
+    {
+        var card = FindOrCreateUserCard(cardId);
+        var beforeTotalExp = card.totalExp;
+        var beforeLevel = card.level;
+        var beforeExp = Math.Max(0, beforeTotalExp - Master.GetCardLevelTotalExp(beforeLevel));
+
+        var addExp = 0;
+        if (costs != null)
+        {
+            foreach (var cost in costs)
+            {
+                if (!string.Equals(cost.resourceType, "practice_ticket", StringComparison.Ordinal) ||
+                    cost.resourceId <= 0 ||
+                    cost.quantity <= 0)
+                    continue;
+
+                ConsumePracticeTicket(cost.resourceId, cost.quantity);
+                addExp += Master.GetPracticeTicketExp(cost.resourceId) * cost.quantity;
+            }
+        }
+
+        var maxLevel = Master.GetCardMaxLevel(cardId, string.Equals(card.specialTrainingStatus, "done", StringComparison.Ordinal));
+        var maxTotalExp = Master.GetCardLevelMaxTotalExp(maxLevel);
+        var afterTotalExp = maxTotalExp > 0
+            ? Math.Min(maxTotalExp, beforeTotalExp + addExp)
+            : beforeTotalExp + addExp;
+        var afterLevel = Master.GetCardLevelFromTotalExp(afterTotalExp, maxLevel);
+        var afterExp = Math.Max(0, afterTotalExp - Master.GetCardLevelTotalExp(afterLevel));
+
+        card.totalExp = afterTotalExp;
+        card.level = afterLevel;
+        card.exp = afterExp;
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
+        if (afterLevel > beforeLevel)
+            TouchBeginnerMissionProgress(6);
+
+        return new UserCardPracticeTicketResponse
+        {
+            updateExpResult = new UpdateExpResult
+            {
+                beforeTotalExp = beforeTotalExp,
+                afterTotalExp = afterTotalExp,
+                beforeExp = beforeExp,
+                afterExp = afterExp,
+                beforeLevel = beforeLevel,
+                afterLevel = afterLevel
+            },
+            updatedResources = GetRefreshData()
+        };
+    }
+
+    public UserCardMasterLessonResponse MasterLessonCard(int cardId, IEnumerable<int>? masterLessonCostIds)
+    {
+        var card = FindOrCreateUserCard(cardId);
+        var beforeMasterRank = card.masterRank;
+
+        foreach (var cost in Master.GetMasterLessonCosts(masterLessonCostIds))
+            ConsumeResource(cost.resourceType, cost.resourceId, cost.quantity);
+
+        var requestedCount = masterLessonCostIds?.Count(id => id > 0) ?? 0;
+        card.masterRank = Math.Clamp(card.masterRank + requestedCount, 0, 5);
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
+
+        var obtainedRewards = new List<UserMasterLessonReward>();
+        foreach (var reward in Master.GetMasterLessonRewards(cardId, beforeMasterRank, card.masterRank))
+        {
+            var resources = Master.BuildResourcesFromBox("master_lesson_reward", reward.resourceBoxId);
+            foreach (var resource in resources)
+                ApplyResource(resource);
+
+            obtainedRewards.Add(new UserMasterLessonReward
+            {
+                masterLessonRewardId = reward.id,
+                obtainRewards = resources
+            });
+        }
+
+        return new UserCardMasterLessonResponse
+        {
+            obtainedRewards = obtainedRewards.ToArray(),
+            updatedResources = GetRefreshData()
+        };
+    }
+
+    public void SetCardSpecialTrainingStatus(int cardId, string? specialTrainingStatus)
+    {
+        var card = FindOrCreateUserCard(cardId);
+        card.specialTrainingStatus = string.IsNullOrWhiteSpace(specialTrainingStatus)
+            ? card.specialTrainingStatus
+            : specialTrainingStatus;
+
+        if (string.Equals(card.specialTrainingStatus, "done", StringComparison.Ordinal))
+        {
+            var maxLevel = Master.GetCardMaxLevel(cardId, true);
+            card.level = Math.Min(card.level, maxLevel);
+        }
+
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
+    }
+
+    public void SetCardDefaultImage(int cardId, string? defaultImage)
+    {
+        var card = FindOrCreateUserCard(cardId);
+        if (!string.IsNullOrWhiteSpace(defaultImage))
+            card.defaultImage = defaultImage;
+
+        UpdateRefreshableType(nameof(SuiteUser.userCards));
+    }
+
+    public UserMissionReceiveResponse ReceiveBeginnerMissionV2Rewards(int[]? missionIds)
+    {
+        var obtainedRewards = new List<UserResource>();
+        if (missionIds == null || missionIds.Length == 0)
+        {
+            return new UserMissionReceiveResponse
+            {
+                updatedResources = GetRefreshData(),
+                obtainedRewards = []
+            };
+        }
+
+        foreach (var missionId in missionIds.Where(id => id > 0).Distinct())
+        {
+            MarkMissionReceived(BeginnerMissionV2Type, missionId);
+            var mission = Master.GetBeginnerMissionV2(missionId);
+            foreach (var reward in mission?.rewards ?? [])
+            {
+                var resources = Master.BuildResourcesFromBox("mission_reward", reward.resourceBoxId);
+                foreach (var resource in resources)
+                {
+                    ApplyResource(resource);
+                    obtainedRewards.Add(resource);
+                }
+            }
+        }
+
+        UpdateRefreshableType(nameof(SuiteUser.userBeginnerMissionV2s));
+        UpdateRefreshableType(nameof(SuiteUser.userMissionStatuses));
+
+        return new UserMissionReceiveResponse
+        {
+            updatedResources = GetRefreshData(),
+            obtainedRewards = obtainedRewards.ToArray()
+        };
+    }
+
+    private UserCard FindOrCreateUserCard(int cardId)
+    {
+        Data.userCards ??= [];
+        var card = Data.userCards.FirstOrDefault(c => c.cardId == cardId);
+        if (card != null)
+            return card;
+
+        return AddCard(cardId);
+    }
+
+    private void TouchBeginnerMissionProgress(int missionId)
+    {
+        Data.userBeginnerMissionV2s ??= [];
+        var missions = Data.userBeginnerMissionV2s.ToList();
+        var mission = missions.FirstOrDefault(m => m.beginnerMissionV2Id == missionId);
+        if (mission == null)
+        {
+            mission = new UserBeginnerMissionV2
+            {
+                beginnerMissionV2Id = missionId
+            };
+            missions.Add(mission);
+        }
+
+        var requirement = Master.GetBeginnerMissionV2(missionId)?.requirement ?? 1;
+        mission.progress = Math.Max(mission.progress, requirement);
+        mission.isNewAchieved = true;
+        Data.userBeginnerMissionV2s = missions.OrderBy(m => m.beginnerMissionV2Id).ToArray();
+        MarkMissionAchieved(BeginnerMissionV2Type, missionId);
+        UpdateRefreshableType(nameof(SuiteUser.userBeginnerMissionV2s));
+        UpdateRefreshableType(nameof(SuiteUser.userMissionStatuses));
+    }
+
+    private void MarkMissionAchieved(string missionType, int missionId)
+    {
+        var status = GetOrCreateMissionStatus(missionType, missionId);
+        if (!string.Equals(status.missionStatus, "received", StringComparison.Ordinal))
+            status.missionStatus = "achieved";
+    }
+
+    private void MarkMissionReceived(string missionType, int missionId)
+    {
+        var status = GetOrCreateMissionStatus(missionType, missionId);
+        status.missionStatus = "received";
+
+        if (string.Equals(missionType, BeginnerMissionV2Type, StringComparison.Ordinal))
+        {
+            Data.userBeginnerMissionV2s ??= [];
+            var missions = Data.userBeginnerMissionV2s.ToList();
+            var mission = missions.FirstOrDefault(m => m.beginnerMissionV2Id == missionId);
+            if (mission == null)
+            {
+                mission = new UserBeginnerMissionV2
+                {
+                    beginnerMissionV2Id = missionId
+                };
+                missions.Add(mission);
+            }
+
+            var requirement = Master.GetBeginnerMissionV2(missionId)?.requirement ?? 1;
+            mission.progress = Math.Max(mission.progress, requirement);
+            mission.isNewAchieved = false;
+            Data.userBeginnerMissionV2s = missions.OrderBy(m => m.beginnerMissionV2Id).ToArray();
+        }
+    }
+
+    private UserMissionStatus GetOrCreateMissionStatus(string missionType, int missionId)
+    {
+        Data.userMissionStatuses ??= [];
+        var statuses = Data.userMissionStatuses.ToList();
+        var status = statuses.FirstOrDefault(s =>
+            s.missionId == missionId &&
+            string.Equals(s.missionType, missionType, StringComparison.Ordinal));
+
+        if (status != null)
+            return status;
+
+        status = new UserMissionStatus
+        {
+            userId = GetUserId(),
+            missionType = missionType,
+            missionId = missionId,
+            missionStatus = "achieved"
+        };
+        statuses.Add(status);
+        Data.userMissionStatuses = statuses
+            .OrderBy(s => s.missionType, StringComparer.Ordinal)
+            .ThenBy(s => s.missionId)
+            .ToArray();
+        return status;
+    }
+
     public string SetUserInherit(string password)
     {
         var inheritId = GenerateRandomString(16);
@@ -1739,6 +1979,9 @@ public class GameUser
             case "gacha_ticket":
                 ConsumeGachaTicketForGacha(resourceId, quantity);
                 break;
+            case "practice_ticket":
+                ConsumePracticeTicket(resourceId, quantity);
+                break;
         }
     }
 
@@ -2151,8 +2394,34 @@ public class GameUser
                 case "practice_ticket":
                     AddPracticeTicket(reward.resourceId, reward.quantity);
                     break;
+                case "costume_3d":
+                    GrantCostume3d(reward.resourceId);
+                    break;
             }
         }
+    }
+
+    private void ConsumePracticeTicket(int practiceTicketId, int quantity)
+    {
+        if (practiceTicketId <= 0 || quantity <= 0)
+            return;
+
+        Data.userPracticeTickets ??= [];
+        var tickets = Data.userPracticeTickets.ToList();
+        var ticket = tickets.FirstOrDefault(t => t.practiceTicketId == practiceTicketId);
+        if (ticket == null)
+        {
+            ticket = new UserPracticeTicket
+            {
+                userId = GetUserId(),
+                practiceTicketId = practiceTicketId
+            };
+            tickets.Add(ticket);
+        }
+
+        ticket.quantity = Math.Max(0, ticket.quantity - quantity);
+        Data.userPracticeTickets = tickets.OrderBy(t => t.practiceTicketId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userPracticeTickets));
     }
 
     private void AddMaterial(int materialId, int quantity)

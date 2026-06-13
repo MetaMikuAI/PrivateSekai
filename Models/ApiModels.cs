@@ -161,6 +161,70 @@ public class UserCardExchangeResponse
     [Key("updatedResources")] public SuiteUser? updatedResources;
 }
 
+// ===================== Card Training =====================
+
+[MessagePackObject]
+public class UserCardPracticeTicketRequest
+{
+    [Key("costs")] public UserResource[]? costs;
+}
+
+[MessagePackObject]
+public class UserCardPracticeTicketResponse
+{
+    [Key("updateExpResult")] public UpdateExpResult? updateExpResult;
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+}
+
+[MessagePackObject]
+public class UserCardMasterLessonRequest
+{
+    [Key("masterLessonCostIds")] public List<int>? masterLessonCostIds;
+}
+
+[MessagePackObject]
+public class UserCardMasterLessonResponse
+{
+    [Key("obtainedRewards")] public UserMasterLessonReward[]? obtainedRewards;
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+}
+
+[MessagePackObject]
+public class UserMasterLessonReward
+{
+    [Key("masterLessonRewardId")] public int masterLessonRewardId;
+    [Key("obtainRewards")] public UserResource[]? obtainRewards;
+}
+
+[MessagePackObject]
+public class UserCardSpecialTrainingRequest
+{
+    [Key("specialTrainingStatus")] public string? specialTrainingStatus;
+}
+
+[MessagePackObject]
+public class UserCardDefaultImageRequest
+{
+    [Key("defaultImage")] public string? defaultImage;
+}
+
+// ===================== Mission =====================
+
+[MessagePackObject]
+public class UserMissionReceiveRequest
+{
+    [Key("missionIds")] public int[]? missionIds;
+    [Key("eventMissionSelectableRewardId")] public int eventMissionSelectableRewardId;
+    [Key("isClosedEventMissionSelectableReward")] public bool isClosedEventMissionSelectableReward;
+}
+
+[MessagePackObject]
+public class UserMissionReceiveResponse
+{
+    [Key("updatedResources")] public SuiteUser? updatedResources;
+    [Key("obtainedRewards")] public UserResource[]? obtainedRewards;
+}
+
 // ===================== Story =====================
 
 [MessagePackObject]
