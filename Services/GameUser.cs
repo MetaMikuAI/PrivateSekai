@@ -1256,6 +1256,9 @@ public class GameUser
         var present = Data.userPresents[idx];
         Data.userPresents.RemoveAt(idx);
 
+        ApplyResource(BuildResourceFromPresent(present));
+        UpdateRefreshableType(nameof(SuiteUser.userPresents));
+
         NotSuite.PresentHistories.Add(new UserPresentHistoryData
         {
             presentId = present.presentId,
@@ -1264,12 +1267,22 @@ public class GameUser
             resourceId = present.resourceId,
             resourceLevel = present.resourceLevel,
             resourceQuantity = present.resourceQuantity,
+            expiredAt = present.expiredAt,
             receivedAt = UserManager.Now,
             reason = present.reason
         });
 
         return present;
     }
+
+    private static UserResource BuildResourceFromPresent(UserPresentData present) =>
+        new()
+        {
+            resourceType = present.resourceType,
+            resourceId = present.resourceId,
+            resourceLevel = present.resourceLevel,
+            quantity = present.resourceQuantity
+        };
 
     public List<UserPresentHistoryData> GetPresentHistory()
     {
@@ -1652,6 +1665,21 @@ public class GameUser
             case "gacha_ceil_item":
                 GrantGachaCeilItem(resource.resourceId, resource.quantity);
                 break;
+            case "gacha_ticket":
+                AddGachaTicket(resource.resourceId, resource.quantity);
+                break;
+            case "boost_item":
+                AddBoostItem(resource.resourceId, resource.quantity);
+                break;
+            case "avatar_motion":
+                AddAvatarMotion(resource.resourceId);
+                break;
+            case "mysekai_item":
+                AddMysekaiItem(resource.resourceId, resource.quantity);
+                break;
+            case "mysekai_tool":
+                AddMysekaiTool(resource.resourceId, resource.quantity);
+                break;
             default:
                 ApplyLiveRewards([resource]);
                 break;
@@ -2009,6 +2037,13 @@ public class GameUser
                         UpdateRefreshableType(nameof(SuiteUser.userGamedata));
                     }
                     break;
+                case "virtual_coin":
+                    if (Data.userGamedata != null)
+                    {
+                        Data.userGamedata.virtualCoin += reward.quantity;
+                        UpdateRefreshableType(nameof(SuiteUser.userGamedata));
+                    }
+                    break;
                 case "material":
                     AddMaterial(reward.resourceId, reward.quantity);
                     break;
@@ -2059,6 +2094,116 @@ public class GameUser
         ticket.quantity += quantity;
         Data.userPracticeTickets = tickets.ToArray();
         UpdateRefreshableType(nameof(SuiteUser.userPracticeTickets));
+    }
+
+    private void AddGachaTicket(int gachaTicketId, int quantity)
+    {
+        if (gachaTicketId <= 0 || quantity <= 0)
+            return;
+
+        Data.userGachaTickets ??= [];
+        var tickets = Data.userGachaTickets.ToList();
+        var ticket = tickets.FirstOrDefault(t => t.gachaTicketId == gachaTicketId);
+        if (ticket == null)
+        {
+            ticket = new UserGachaTicket
+            {
+                userId = GetUserId(),
+                gachaTicketId = gachaTicketId
+            };
+            tickets.Add(ticket);
+        }
+
+        ticket.quantity += quantity;
+        Data.userGachaTickets = tickets.OrderBy(t => t.gachaTicketId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userGachaTickets));
+    }
+
+    private void AddBoostItem(int boostItemId, int quantity)
+    {
+        if (boostItemId <= 0 || quantity <= 0)
+            return;
+
+        Data.userBoostItems ??= [];
+        var items = Data.userBoostItems.ToList();
+        var item = items.FirstOrDefault(i => i.boostItemId == boostItemId);
+        if (item == null)
+        {
+            item = new UserBoostItem
+            {
+                userId = GetUserId(),
+                boostItemId = boostItemId
+            };
+            items.Add(item);
+        }
+
+        item.quantity += quantity;
+        Data.userBoostItems = items.OrderBy(i => i.boostItemId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userBoostItems));
+    }
+
+    private void AddAvatarMotion(int avatarMotionId)
+    {
+        if (avatarMotionId <= 0)
+            return;
+
+        Data.userAvatarMotions ??= [];
+        var motions = Data.userAvatarMotions.ToList();
+        if (motions.Any(m => m.avatarMotionId == avatarMotionId))
+            return;
+
+        motions.Add(new UserAvatarMotion { avatarMotionId = avatarMotionId });
+        Data.userAvatarMotions = motions.OrderBy(m => m.avatarMotionId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userAvatarMotions));
+    }
+
+    private void AddMysekaiItem(int mysekaiItemId, int quantity)
+    {
+        if (mysekaiItemId <= 0 || quantity <= 0)
+            return;
+
+        Data.userMysekaiItems ??= [];
+        var items = Data.userMysekaiItems.ToList();
+        var item = items.FirstOrDefault(i => i.mysekaiItemId == mysekaiItemId);
+        if (item == null)
+        {
+            item = new UserMysekaiItem
+            {
+                mysekaiItemId = mysekaiItemId,
+                lastObtainedAt = UserManager.Now
+            };
+            items.Add(item);
+        }
+
+        item.quantity += quantity;
+        item.lastObtainedAt = UserManager.Now;
+        Data.userMysekaiItems = items.OrderBy(i => i.mysekaiItemId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userMysekaiItems));
+    }
+
+    private void AddMysekaiTool(int mysekaiToolId, int quantity)
+    {
+        if (mysekaiToolId <= 0 || quantity <= 0)
+            return;
+
+        Data.userMysekaiTools ??= [];
+        var tools = Data.userMysekaiTools.ToList();
+        var tool = tools.FirstOrDefault(t => t.mysekaiToolId == mysekaiToolId);
+        if (tool == null)
+        {
+            tool = new UserMysekaiTool
+            {
+                mysekaiToolId = mysekaiToolId,
+                durability = Master.GetMysekaiToolMaxDurability(mysekaiToolId),
+                lastObtainedAt = UserManager.Now
+            };
+            tools.Add(tool);
+        }
+
+        tool.quantity += quantity;
+        tool.lastObtainedAt = UserManager.Now;
+        Data.userMysekaiTools = tools.OrderBy(t => t.mysekaiToolId).ToArray();
+        UpdateRefreshableType(nameof(SuiteUser.userMysekaiTools));
     }
 
     private void ConsumeBoost(int boostCount)

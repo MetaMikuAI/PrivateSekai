@@ -84,6 +84,10 @@ public sealed class MasterDataManager
     public MasterMusicVocal? GetMasterMusicVocal(int musicVocalId) =>
         _cache.GetTable<MasterMusicVocal>("musicVocals", v => v.id).FindById(musicVocalId);
 
+    public int GetMysekaiToolMaxDurability(int mysekaiToolId) =>
+        _cache.GetTable<MasterMysekaiTool>("mysekaiTools", t => t.id)
+            .FindById(mysekaiToolId)?.maxDurability ?? 0;
+
     public MasterBoost BuildMasterBoost(int boostCount)
     {
         foreach (var boost in _cache.GetTable<MasterBoostRow>("boosts", b => b.id).Rows)

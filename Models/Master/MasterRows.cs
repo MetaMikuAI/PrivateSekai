@@ -169,6 +169,12 @@ public sealed class MasterMusicVocal
     public int releaseConditionId { get; set; }
 }
 
+public sealed class MasterMysekaiTool
+{
+    public int id { get; set; }
+    public int maxDurability { get; set; }
+}
+
 public sealed class MasterLiveMissionPass
 {
     public int id { get; set; }

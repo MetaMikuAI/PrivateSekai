@@ -14,6 +14,7 @@ public class UserPresentHistoryData
     [Key("resourceId")] public int resourceId;
     [Key("resourceLevel")] public int resourceLevel;
     [Key("resourceQuantity")] public int resourceQuantity;
+    [Key("expiredAt")] public long expiredAt;
     [Key("receivedAt")] public long receivedAt;
     [Key("reason")] public string? reason;
 }

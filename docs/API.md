@@ -684,6 +684,7 @@
 - `userPresentHistories[].resourceId`: 礼物资源 ID。
 - `userPresentHistories[].resourceLevel`: 礼物资源等级。
 - `userPresentHistories[].resourceQuantity`: 礼物资源数量。
+- `userPresentHistories[].expiredAt`: 礼物过期时间。
 - `userPresentHistories[].receivedAt`: 领取时间。
 - `userPresentHistories[].reason`: 礼物来源说明。
 
