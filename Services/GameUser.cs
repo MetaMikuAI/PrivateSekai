@@ -56,6 +56,11 @@ public class GameUser
         [3] = [4, 384, 2002, 2005],
         [4] = [3, 838, 2001, 2006]
     };
+
+    private const string CardEpisodeReleaseCostTypeCommonMaterial = "common_material";
+    private const string CardEpisodeReleaseCostTypeTicket = "card_episode_release_ticket";
+    private const string CardEpisodeReleaseTicketMaterialIdConfig = "card_episode_release_ticket_material_id";
+    private const string CardEpisodeReleaseCostQuantityConfig = "card_episode_release_cost_quantity";
     
     public GameUser(SuiteUser? data = null)
     {
@@ -1142,10 +1147,21 @@ public class GameUser
         }
     }
 
-    public void ReleaseStoryEpisode(string storyType, int episodeId)
+    public UserResource[] CompleteStoryEpisode(string storyType, int episodeId, bool isNotSkipped = false)
     {
         if (storyType == "card_story")
-            ReleaseCardEpisode(episodeId);
+            return CompleteCardEpisode(episodeId, isNotSkipped);
+
+        ReadStoryEpisode(storyType, episodeId, isNotSkipped);
+        return [];
+    }
+
+    public UserResource[] ReleaseStoryEpisode(string storyType, int episodeId, string? costType)
+    {
+        if (storyType == "card_story")
+            return ReleaseCardEpisode(episodeId, costType);
+
+        return [];
     }
 
     private void MarkEpisodeRead(UserEpisodeStatus[]? statuses, int episodeId, string fieldName, bool isNotSkipped)
@@ -1156,9 +1172,11 @@ public class GameUser
         {
             if (status.episodeId != episodeId) continue;
 
+            var changed = status.status != "already_read" || status.isNotSkipped != isNotSkipped;
             status.status = "already_read";
             status.isNotSkipped = isNotSkipped;
-            UpdateRefreshableType(fieldName);
+            if (changed)
+                UpdateRefreshableType(fieldName);
             return;
         }
     }
@@ -1171,9 +1189,11 @@ public class GameUser
         {
             if (status.episodeId != episodeId) continue;
 
+            var changed = status.status != "already_read" || status.isNotSkipped != isNotSkipped;
             status.status = "already_read";
             status.isNotSkipped = isNotSkipped;
-            UpdateRefreshableType(fieldName);
+            if (changed)
+                UpdateRefreshableType(fieldName);
             return;
         }
     }
@@ -1186,16 +1206,18 @@ public class GameUser
         {
             if (status.episodeId != episodeId) continue;
 
+            var changed = status.status != "already_read" || status.isNotSkipped != isNotSkipped;
             status.status = "already_read";
             status.isNotSkipped = isNotSkipped;
-            UpdateRefreshableType(fieldName);
+            if (changed)
+                UpdateRefreshableType(fieldName);
             return;
         }
     }
 
-    private void MarkCardEpisodeRead(int cardEpisodeId, bool isNotSkipped)
+    private UserCardEpisode? FindCardEpisode(int cardEpisodeId)
     {
-        if (Data.userCards == null) return;
+        if (Data.userCards == null) return null;
 
         foreach (var card in Data.userCards)
         {
@@ -1203,35 +1225,114 @@ public class GameUser
 
             foreach (var episode in card.episodes)
             {
-                if (episode.cardEpisodeId != cardEpisodeId) continue;
-
-                episode.scenarioStatus = "already_read";
-                episode.scenarioStatusReasons = [];
-                episode.isNotSkipped = isNotSkipped;
-                UpdateRefreshableType(nameof(SuiteUser.userCards));
-                return;
+                if (episode.cardEpisodeId == cardEpisodeId)
+                    return episode;
             }
         }
+
+        return null;
     }
 
-    private void ReleaseCardEpisode(int cardEpisodeId)
+    private void MarkCardEpisodeRead(int cardEpisodeId, bool isNotSkipped)
     {
-        if (Data.userCards == null) return;
+        var episode = FindCardEpisode(cardEpisodeId);
+        if (episode == null) return;
 
-        foreach (var card in Data.userCards)
+        var changed = episode.scenarioStatus != "already_read" || episode.isNotSkipped != isNotSkipped;
+        episode.scenarioStatus = "already_read";
+        episode.scenarioStatusReasons = [];
+        episode.isNotSkipped = isNotSkipped;
+        if (changed)
+            UpdateRefreshableType(nameof(SuiteUser.userCards));
+    }
+
+    private UserResource[] CompleteCardEpisode(int cardEpisodeId, bool isNotSkipped)
+    {
+        var episode = FindCardEpisode(cardEpisodeId);
+        var wasAlreadyRead = string.Equals(episode?.scenarioStatus, "already_read", StringComparison.Ordinal);
+
+        MarkCardEpisodeRead(cardEpisodeId, isNotSkipped);
+
+        if (episode == null || wasAlreadyRead)
+            return [];
+
+        var rewards = Master.BuildResourcesFromBoxes(
+            "episode_reward",
+            Master.GetMasterCardEpisode(cardEpisodeId)?.rewardResourceBoxIds);
+
+        ApplyLiveRewards(rewards);
+
+        UpdateRefreshableTypes(new[]
         {
-            if (card.episodes == null) continue;
+            nameof(SuiteUser.userCharacterMissionV2s),
+            nameof(SuiteUser.userCharacterMissionV2Statuses)
+        });
 
-            foreach (var episode in card.episodes)
-            {
-                if (episode.cardEpisodeId != cardEpisodeId) continue;
+        return rewards;
+    }
 
-                episode.scenarioStatus = "released";
-                episode.scenarioStatusReasons = [];
-                UpdateRefreshableType(nameof(SuiteUser.userCards));
-                return;
-            }
+    private UserResource[] ReleaseCardEpisode(int cardEpisodeId, string? costType)
+    {
+        var episode = FindCardEpisode(cardEpisodeId);
+        if (episode == null)
+            return [];
+
+        var wasUnlocked =
+            string.Equals(episode.scenarioStatus, "released", StringComparison.Ordinal) ||
+            string.Equals(episode.scenarioStatus, "already_read", StringComparison.Ordinal);
+
+        var consumed = wasUnlocked ? [] : BuildCardEpisodeReleaseCosts(cardEpisodeId, costType);
+        foreach (var resource in consumed)
+        {
+            ConsumeResource(resource.resourceType, resource.resourceId, resource.quantity);
         }
+
+        if (episode != null)
+        {
+            episode.scenarioStatus = "released";
+            episode.scenarioStatusReasons = [];
+            UpdateRefreshableType(nameof(SuiteUser.userCards));
+        }
+
+        return consumed;
+    }
+
+    private UserResource[] BuildCardEpisodeReleaseCosts(int cardEpisodeId, string? costType)
+    {
+        var normalizedCostType = string.IsNullOrEmpty(costType)
+            ? CardEpisodeReleaseCostTypeCommonMaterial
+            : costType;
+
+        if (string.Equals(normalizedCostType, CardEpisodeReleaseCostTypeTicket, StringComparison.Ordinal))
+        {
+            var materialId = Master.GetConfigInt(CardEpisodeReleaseTicketMaterialIdConfig);
+            var quantity = Master.GetConfigInt(CardEpisodeReleaseCostQuantityConfig, 1);
+            return materialId <= 0 || quantity <= 0
+                ? []
+                :
+                [
+                    new UserResource
+                    {
+                        resourceType = "material",
+                        resourceId = materialId,
+                        quantity = quantity
+                    }
+                ];
+        }
+
+        var costs = Master.GetMasterCardEpisode(cardEpisodeId)?.costs;
+        if (costs == null)
+            return [];
+
+        return costs
+            .Where(cost => cost.quantity > 0)
+            .Select(cost => new UserResource
+            {
+                resourceType = cost.resourceType,
+                resourceId = cost.resourceId,
+                quantity = cost.quantity
+            })
+            .ToArray();
     }
 
     public List<UserPresentData> ReceivePresent(string[] presentIds)

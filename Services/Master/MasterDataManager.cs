@@ -31,6 +31,17 @@ public sealed class MasterDataManager
         return ids;
     }
 
+    public MasterCardEpisode? GetMasterCardEpisode(int cardEpisodeId) =>
+        _cache.GetTable<MasterCardEpisode>("cardEpisodes", e => e.id).FindById(cardEpisodeId);
+
+    public int GetConfigInt(string configKey, int fallback = 0)
+    {
+        var config = _cache.GetTable<MasterConfigRow>("configs").Rows
+            .FirstOrDefault(c => string.Equals(c.configKey, configKey, StringComparison.Ordinal));
+
+        return int.TryParse(config?.value, out var value) ? value : fallback;
+    }
+
     public MasterGacha? GetMasterGacha(int gachaId) =>
         _cache.GetTable<MasterGacha>("gachas", g => g.id).FindById(gachaId);
 
@@ -193,6 +204,16 @@ public sealed class MasterDataManager
         }
 
         return [];
+    }
+
+    public UserResource[] BuildResourcesFromBoxes(string purpose, IEnumerable<int>? resourceBoxIds)
+    {
+        if (resourceBoxIds == null)
+            return [];
+
+        return resourceBoxIds
+            .SelectMany(resourceBoxId => BuildResourcesFromBox(purpose, resourceBoxId))
+            .ToArray();
     }
 
     public int GetCurrentLiveMissionPeriodId()

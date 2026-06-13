@@ -418,7 +418,7 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，Episode，已读，奖励，用户资源
 
-提交一个故事 episode 已读。客户端把故事类型和 episode ID 放入 path，不发送请求体；成功后合并返回的用户资源差异，并读取可能获得的故事奖励资源。
+提交一个故事 episode 已读。客户端把故事类型和 episode ID 放入 path，不发送请求体；成功后合并返回的用户资源差异，并读取可能获得的故事奖励资源。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的 story episode 完成逻辑。
 
 ### 请求参数
 
@@ -429,8 +429,8 @@
 
 ### 返回字段
 
-- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据，常见影响为各类 episode status、卡牌故事状态和相关奖励状态。
-- `obtainedResources`: 本次读完 episode 后获得的资源数组；客户端用于奖励展示或后续奖励弹窗判断。
+- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据，常见影响为各类 episode status、卡牌故事状态和相关奖励状态。卡牌 side story 首读样本中会返回 `userCards` 和 `userChargedCurrency`。
+- `obtainedResources`: 本次读完 episode 后获得的资源数组；客户端用于奖励展示或后续奖励弹窗判断。卡牌 side story 首读样本中按 master `episode_reward` 资源盒返回 `jewel`，前篇常见为 25，后篇常见为 50。
 
 ### 客户端请求时机
 
@@ -442,7 +442,8 @@
 
 2. 卡牌 side story 或角色档案故事读完时请求。
    - 卡牌故事通常会先经过解锁/确认流程，再在实际读完后请求本接口。
-   - 成功后客户端更新卡牌 episode 或角色档案 episode 状态，并继续关闭故事界面或展示奖励。
+   - 卡牌 side story 成功后客户端把对应 episode 合并为 `already_read`，并处理 `obtainedResources` 中的首读奖励。
+   - 客户端随后还会提交 `/log` 播放日志；抓包显示该日志请求通常不重复发放首读奖励。
 
 3. 新手/登录故事流程中也会复用同一 API。
    - 客户端在特定剧情播放完成后提交 episode 已读。
@@ -463,19 +464,19 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，卡牌故事，解锁，消耗，用户资源
 
-提交故事 episode 解锁消耗。客户端主要在卡牌 side story 的锁定 episode 解锁流程中请求，用指定消耗类型解锁后续故事；成功后合并资源差异并继续读故事确认流程。
+提交故事 episode 解锁消耗。客户端主要在卡牌 side story 的锁定 episode 解锁流程中请求，用指定消耗类型解锁后续故事；成功后合并资源差异并继续读故事确认流程。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的卡牌剧情解锁逻辑。
 
 ### 请求参数
 
 - Path `userId`: 当前用户 ID。
 - Path `storyType`: 故事类型；当前确认的主要使用场景为 `card_story`。
 - Path `episodeId`: 要解锁的 episode ID。
-- Body `cardEpisodeReleaseCostType`: 解锁消耗类型，已确认有 `common_material` 和 `card_episode_release_ticket`。
+- Body `cardEpisodeReleaseCostType`: 解锁消耗类型，已确认有 `common_material` 和 `card_episode_release_ticket`。dump-5 样本实际发送 `common_material`。
 
 ### 返回字段
 
-- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并，用于刷新 episode 解锁状态和资源持有状态。
-- `consumedResources`: 本次解锁消耗的资源数组；客户端用于消耗展示或后续 UI 刷新。
+- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并，用于刷新 episode 解锁状态和资源持有状态。卡牌 side story 样本中会返回对应卡牌 episode 的 `scenarioStatus = released`，并返回扣减后的 `userMaterials`。
+- `consumedResources`: 本次解锁消耗的资源数组；客户端用于消耗展示或后续 UI 刷新。`common_material` 使用卡牌 episode master 的 `costs`；`card_episode_release_ticket` 使用配置中的放开券材料 ID 和数量。
 
 ### 客户端请求时机
 
@@ -484,7 +485,7 @@
 1. 卡牌详情页解锁 side story 时请求。
    - 玩家在锁定 episode 的解锁确认弹窗中选择消耗方式。
    - 客户端提交 `cardEpisodeReleaseCostType`，成功后合并 `updatedResources`。
-   - 随后客户端继续打开读故事确认弹窗或刷新卡牌详情状态。
+   - 随后客户端继续打开读故事确认弹窗或刷新卡牌详情状态；实际链路中紧接着会请求 `POST /api/user/{userId}/story/card_story/episode/{episodeId}`。
 
 2. Side Story 列表单元中解锁卡牌故事时请求。
    - 列表单元同样按当前卡牌 episode 和消耗方式构造请求。
@@ -503,7 +504,7 @@
 > 审计版本: jp-6.5.5
 > 关键词：Story，播放日志，跳过，自动播放，奖励
 
-提交故事播放日志。客户端在 story 播放结束后把本次播放行为信息提交给服务端，包括是否跳过、是否自动播放、页数和连续播放状态；成功后合并用户资源并处理可能获得的资源结果。
+提交故事播放日志。客户端在 story 播放结束后把本次播放行为信息提交给服务端，包括是否跳过、是否自动播放、页数、连续播放状态和故事内 MV/音乐播放信息；成功后合并用户资源并处理可能获得的资源结果。与当前服务端实现相关，对应 `StoryController` 和 `GameUser` 的播放日志处理逻辑。
 
 ### 请求参数
 
@@ -518,11 +519,16 @@
 - Body `voice`: 是否播放语音。
 - Body `numPages`: 本次故事页数。
 - Body `continuousPlayStart`: 是否连续播放起始。
+- Body `playMusicVideo`: 是否播放故事内 MV。
+- Body `musicVocalId`: 故事内 MV 使用的 vocal ID；未使用时为 0。
+- Body `musicCategoryName`: 音乐类别名；抓包中未播放 MV 时仍可为 `mv`。
+- Body `musicVideoNoSkip`: 故事内 MV 是否未跳过。
+- Body `userStoryMusicPlays`: 故事内音乐播放数组，元素包含 `musicId` 和 `musicTrackType`。
 
 ### 返回字段
 
-- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据。
-- `userObtainResourceResults`: 本次日志提交后获得的资源结果数组；元素包含 `obtainReason` 和 `userResources`。
+- `updatedResources`: `SuiteUser` 局部更新数据；客户端成功后合并到本地用户数据。dump-5 的卡牌 side story 日志样本只返回通用刷新字段，没有再次返回 `userCards` 或奖励资源。
+- `userObtainResourceResults`: 本次日志提交后获得的资源结果数组；元素包含 `obtainReason` 和 `userResources`。dump-5 的卡牌 side story 日志样本为空数组。
 
 ### 客户端请求时机
 
@@ -534,6 +540,7 @@
 
 2. 活动故事、活动首页开场故事和卡牌 side story 播放结束后请求。
    - 这些场景会在自己的故事结束回调中提交同类日志。
+   - 卡牌 side story 的实际链路为先 `/cost` 解锁，再提交 episode 完成并领取首读奖励，最后提交 `/log` 播放日志。
    - 成功后继续各自页面的刷新、奖励弹窗或场景退出。
 
 3. 角色档案故事播放结束后也会请求。
@@ -543,7 +550,7 @@
 ### 客户端切入点
 
 - `Sekai.PostUserStoryLogAPI.Execute`: 确认 path 为 `user/{userId}/story/{storyType}/episode/{episodeId}/log`，method 为 POST，request 为 `UserStoryLogRequest`，response 为 `UserStoryLogResponse`。
-- `Sekai.UserStoryLogRequest`: 确认播放日志字段为 `noSkip`、`useSkip`、`autoFinish`、`useAuto`、`fastForward`、`voice`、`numPages`、`continuousPlayStart`。
+- `Sekai.UserStoryLogRequest`: 确认播放日志字段为 `noSkip`、`useSkip`、`autoFinish`、`useAuto`、`fastForward`、`voice`、`numPages`、`continuousPlayStart`、`playMusicVideo`、`musicVocalId`、`musicCategoryName`、`musicVideoNoSkip`、`userStoryMusicPlays`。
 - `Sekai.UserStoryLogResponse`: 确认 response 字段为 `updatedResources` 和 `userObtainResourceResults`。
 - `Sekai.ConsecutiveScenarioPlayer.StoryEndLogCallBack`: 连续播放器提交故事日志的通用入口。
 - `Sekai.ScreenLayerStorySelectBase.StoryEndLogCallBack`: 普通故事选择页的日志提交入口。

@@ -9,7 +9,24 @@ public sealed class MasterCard
 public sealed class MasterCardEpisode
 {
     public int id { get; set; }
+    public int seq { get; set; }
     public int cardId { get; set; }
+    public int[]? rewardResourceBoxIds { get; set; }
+    public MasterCardEpisodeCost[]? costs { get; set; }
+    public string? cardEpisodePartType { get; set; }
+}
+
+public sealed class MasterCardEpisodeCost
+{
+    public string? resourceType { get; set; }
+    public int resourceId { get; set; }
+    public int quantity { get; set; }
+}
+
+public sealed class MasterConfigRow
+{
+    public string? configKey { get; set; }
+    public string? value { get; set; }
 }
 
 public sealed class MasterCardCostume3D

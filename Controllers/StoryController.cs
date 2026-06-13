@@ -22,12 +22,12 @@ public class StoryController : PrskController
     public IActionResult HandleStoryEpisode(long userId, string storyType, int episodeId)
     {
         var user = _users.GetUser(userId);
-        user.ReadStoryEpisode(storyType, episodeId);
+        var obtainedResources = user.CompleteStoryEpisode(storyType, episodeId);
 
         return Ok(new UserStoryResponse
         {
             updatedResources = user.GetRefreshData(deleteRtypes: StoryRefreshDeleteTypes),
-            obtainedResources = []
+            obtainedResources = obtainedResources
         });
     }
 
@@ -42,12 +42,15 @@ public class StoryController : PrskController
         [FromBody] UserStoryRequest request)
     {
         var user = _users.GetUser(userId);
-        user.ReleaseStoryEpisode(storyType, episodeId);
+        var consumedResources = user.ReleaseStoryEpisode(
+            storyType,
+            episodeId,
+            request.cardEpisodeReleaseCostType);
 
         return Ok(new UserStoryCostResponse
         {
             updatedResources = user.GetRefreshData(deleteRtypes: StoryRefreshDeleteTypes),
-            consumedResources = []
+            consumedResources = consumedResources
         });
     }
 

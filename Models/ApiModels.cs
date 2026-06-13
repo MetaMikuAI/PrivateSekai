@@ -194,6 +194,18 @@ public class UserStoryLogRequest
     [Key("voice")] public bool voice;
     [Key("numPages")] public int numPages;
     [Key("continuousPlayStart")] public bool continuousPlayStart;
+    [Key("playMusicVideo")] public bool playMusicVideo;
+    [Key("musicVocalId")] public int musicVocalId;
+    [Key("musicCategoryName")] public string? musicCategoryName;
+    [Key("musicVideoNoSkip")] public bool musicVideoNoSkip;
+    [Key("userStoryMusicPlays")] public UserStoryMusicPlay[]? userStoryMusicPlays;
+}
+
+[MessagePackObject]
+public class UserStoryMusicPlay
+{
+    [Key("musicId")] public int musicId;
+    [Key("musicTrackType")] public string? musicTrackType;
 }
 
 [MessagePackObject]
