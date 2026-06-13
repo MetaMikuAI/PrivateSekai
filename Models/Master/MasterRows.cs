@@ -14,6 +14,13 @@ public sealed class MasterCardRarity
     public int maxSkillLevel { get; set; }
 }
 
+public sealed class MasterCardExchangeResource
+{
+    public string? cardRarityType { get; set; }
+    public int seq { get; set; }
+    public int resourceBoxId { get; set; }
+}
+
 public sealed class MasterCardEpisode
 {
     public int id { get; set; }

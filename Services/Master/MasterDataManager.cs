@@ -143,6 +143,25 @@ public sealed class MasterDataManager
             .ToArray();
     }
 
+    public int GetCardExchangeResourceBoxId(string? cardRarityType)
+    {
+        if (cardRarityType == null)
+            return 0;
+
+        return _cache.GetTable<MasterCardExchangeResource>("cardExchangeResources")
+            .Rows
+            .Where(row => string.Equals(row.cardRarityType, cardRarityType, StringComparison.Ordinal))
+            .OrderBy(row => row.seq)
+            .FirstOrDefault()
+            ?.resourceBoxId ?? 0;
+    }
+
+    public UserResource[] GetCardExchangeResources(string? cardRarityType)
+    {
+        var resourceBoxId = GetCardExchangeResourceBoxId(cardRarityType);
+        return BuildResourcesFromBox("card_exchange_resource", resourceBoxId);
+    }
+
     public MasterBeginnerMissionV2? GetBeginnerMissionV2(int missionId) =>
         _cache.GetTable<MasterBeginnerMissionV2>("beginnerMissionV2s", m => m.id)
             .FindById(missionId);

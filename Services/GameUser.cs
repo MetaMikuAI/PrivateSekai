@@ -1052,24 +1052,21 @@ public class GameUser
         {
             var current = cards.FirstOrDefault(c => c.cardId == requestCard.cardId);
             if (current == null)
-            {
-                requestCard.userId = GetUserId();
-                cards.Add(requestCard);
                 continue;
-            }
 
-            current.level = requestCard.level;
-            current.exp = requestCard.exp;
-            current.totalExp = requestCard.totalExp;
-            current.skillLevel = requestCard.skillLevel;
-            current.skillExp = requestCard.skillExp;
-            current.totalSkillExp = requestCard.totalSkillExp;
-            current.masterRank = requestCard.masterRank;
-            current.specialTrainingStatus = requestCard.specialTrainingStatus;
-            current.defaultImage = requestCard.defaultImage;
-            current.duplicateCount = requestCard.duplicateCount;
-            current.createdAt = requestCard.createdAt;
-            current.episodes = requestCard.episodes;
+            var targetDuplicateCount = Math.Max(0, requestCard.duplicateCount);
+            var exchangeCount = current.duplicateCount - targetDuplicateCount;
+            if (exchangeCount <= 0)
+                continue;
+
+            current.duplicateCount = targetDuplicateCount;
+
+            var exchangeResources = Master.GetCardExchangeResources(GetCardRarityType(current.cardId));
+            for (var i = 0; i < exchangeCount; i++)
+            {
+                foreach (var resource in exchangeResources)
+                    ApplyResource(resource);
+            }
         }
 
         Data.userCards = cards.OrderBy(c => c.cardId).ToList();
