@@ -23,7 +23,43 @@ public class SuiteMasterFileController : ControllerBase
     [HttpGet("api/suitemasterfile/{version}/{**filename}")]
     public async Task HandleSuiteMasterFile(string version, string filename)
     {
-        var filePath = Path.Combine(ServerConfig.SuiteMasterFilePath, version, filename);
+        string filePath;
+        string cachePath;
+
+        try
+        {
+            var suiteMasterRoot = Path.GetFullPath(ServerConfig.SuiteMasterFilePath);
+            var fileRoot = Path.GetFullPath(Path.Combine(suiteMasterRoot, version));
+            filePath = Path.GetFullPath(Path.Combine(fileRoot, filename));
+
+            var cacheBaseRoot = Path.GetFullPath(Path.Combine(suiteMasterRoot, ".encrypted-cache"));
+            var cacheRoot = Path.GetFullPath(Path.Combine(cacheBaseRoot, version));
+            cachePath = Path.GetFullPath(Path.Combine(cacheRoot, filename));
+
+            if (!IsUnderDirectory(fileRoot, suiteMasterRoot)
+                || !IsUnderDirectory(cacheRoot, cacheBaseRoot)
+                || !IsUnderDirectory(filePath, fileRoot)
+                || !IsUnderDirectory(cachePath, cacheRoot))
+            {
+                _logger.LogWarning(
+                    "Rejected suite master file path: version={Version}, filename={Filename}",
+                    version,
+                    filename);
+                Response.StatusCode = 404;
+                await Response.WriteAsync("Not Found");
+                return;
+            }
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            _logger.LogWarning(
+                "Invalid suite master file path: version={Version}, filename={Filename}",
+                version,
+                filename);
+            Response.StatusCode = 404;
+            await Response.WriteAsync("Not Found");
+            return;
+        }
 
         if (!System.IO.File.Exists(filePath))
         {
@@ -35,7 +71,7 @@ public class SuiteMasterFileController : ControllerBase
 
         try
         {
-            var cachePath = await GetEncryptedCachePathAsync(filePath, version, filename);
+            cachePath = await GetEncryptedCachePathAsync(filePath, cachePath);
             var cacheInfo = new FileInfo(cachePath);
 
             Response.ContentType = "application/octet-stream";
@@ -65,9 +101,8 @@ public class SuiteMasterFileController : ControllerBase
         }
     }
 
-    private async Task<string> GetEncryptedCachePathAsync(string filePath, string version, string filename)
+    private async Task<string> GetEncryptedCachePathAsync(string filePath, string cachePath)
     {
-        var cachePath = BuildEncryptedCachePath(version, filename);
         var cacheLock = CacheLocks.GetOrAdd(cachePath, _ => new SemaphoreSlim(1, 1));
 
         await cacheLock.WaitAsync(HttpContext.RequestAborted);
@@ -108,12 +143,6 @@ public class SuiteMasterFileController : ControllerBase
         }
     }
 
-    private static string BuildEncryptedCachePath(string version, string filename)
-    {
-        var cacheRoot = Path.Combine(ServerConfig.SuiteMasterFilePath, ".encrypted-cache");
-        return Path.Combine(cacheRoot, version, filename);
-    }
-
     private static bool IsEncryptedCacheFresh(string sourcePath, string cachePath)
     {
         if (!System.IO.File.Exists(cachePath))
@@ -125,5 +154,18 @@ public class SuiteMasterFileController : ControllerBase
             return false;
 
         return cacheInfo.LastWriteTimeUtc >= sourceInfo.LastWriteTimeUtc;
+    }
+
+    private static bool IsUnderDirectory(string path, string directory)
+    {
+        var fullDirectory = Path.GetFullPath(directory);
+        if (!Path.EndsInDirectorySeparator(fullDirectory))
+            fullDirectory += Path.DirectorySeparatorChar;
+
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        return Path.GetFullPath(path).StartsWith(fullDirectory, comparison);
     }
 }
