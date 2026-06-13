@@ -785,7 +785,6 @@
 - Path `userId`: 当前用户 ID。
 - Query `behavior`: 固定为 `exchange`。
 - Body `userCards`: `UserCard[]`，待转换的卡牌列表。客户端会从确认弹窗传入的卡牌列表汇总后发送。
-- 路由别名：客户端确认使用带尾斜杠的 `card/?behavior=exchange`；服务端若兼容，也可同时接受不带尾斜杠的形式。
 
 ### 返回字段
 
